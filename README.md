@@ -7,10 +7,15 @@ The module is currently hard-coded to these dataset roots:
 
 - Images: `/Users/brian/repos/pediatric-glioma-segmentation/data/datasets/derivatives/preprocessed/images`
 - Segmentations: `/Users/brian/repos/pediatric-glioma-segmentation/data/datasets/derivatives/preprocessed/ground-truth-segs`
+- Participants CSV: `/Users/brian/repos/slicer-plugin/pediatric-glioma-participants.csv`
+- Assignee filter: `YOUR_INITIALS = "BK"` by default
 
 ## What it does
 
-- Scans all `sub-*/ses-*` sessions under the image root.
+- Reads `pediatric-glioma-participants.csv` and only considers rows whose
+  `assignee` matches `YOUR_INITIALS`.
+- Uses each selected row's `participant_id` and `session_id` to construct the
+  image and segmentation paths.
 - Keeps only sessions with exactly 4 image files in `anat/`.
 - Keeps only sessions with exactly 1 segmentation file containing `_dseg` in the
   matching segmentation `anat/` folder.

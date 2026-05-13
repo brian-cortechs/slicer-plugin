@@ -1,0 +1,258 @@
+participant_id,session_id,review,jeff comments,issues,fix difficulty,notes,tumor location,assignee,status of fix,split,fold,source_dataset,brats_id,brats_year,brats_split,source_org,mapping_id,age_days,age_years,sex,ethnicity,race,overall_survival_days,operation_status,has_segmentation
+sub-00001,ses-000,yes <<,,minor,,NC / PE boundary unclear,,,,train,2,BraTS-2025,BraTS-PED-00001-000,2025,train,The Children's Hospital of Philadelphia,C1036890,4545,12.4,Male,Not Hispanic or Latino,Other/Unavailable/Not Reported,315,pre,TRUE
+sub-00002,ses-000,no,,,,,,,,train,4,BraTS-2025,BraTS-PED-00002-000,2025,train,The Children's Hospital of Philadelphia,C1060383,1733,4.7,Female,Not Hispanic or Latino,White,367,pre,TRUE
+sub-00003,ses-000,no,,minor,,FP for NC inferior slices,,,,train,2,BraTS-2025,BraTS-PED-00003-000,2025,train,The Children's Hospital of Philadelphia,C1061121,6216,17,Female,Not Hispanic or Latino,White,496,pre,TRUE
+sub-00004,ses-000,no,,minor,,jittery ET labels,,,,test,,BraTS-2025,BraTS-PED-00004-000,2025,train,The Children's Hospital of Philadelphia,C1095069,6393,17.5,Female,Not Hispanic or Latino,Asian,819,pre,TRUE
+sub-00005,ses-000,maybe,,minor,,"extra NC on boundary, is middle cystic?",,,,train,2,BraTS-2025,BraTS-PED-00005-000,2025,train,The Children's Hospital of Philadelphia,C115989,4485,12.3,Male,Not Hispanic or Latino,White,3142,pre,TRUE
+sub-00006,ses-000,no,,,,,,,,train,3,BraTS-2025,BraTS-PED-00006-000,2025,train,The Children's Hospital of Philadelphia,C116727,3572,9.8,Female,Hispanic or Latino,Other/Unavailable/Not Reported,855,pre,TRUE
+sub-00007,ses-000,yes,,major,,"labeled NC, but actually FLAIR?",,AG,TODO,test,,BraTS-2025,BraTS-PED-00008-000,2025,train,The Children's Hospital of Philadelphia,C15375,2060,5.6,Female,Unavailable,White,100,pre,TRUE
+sub-00008,ses-000,yes,,minor,,all 4 labels,,,,train,2,BraTS-2025,BraTS-PED-00009-000,2025,train,The Children's Hospital of Philadelphia,C15498,1881,5.1,Female,Not Hispanic or Latino,White,1747,pre,TRUE
+sub-00009,ses-000,no,,,,,,,,train,1,BraTS-2025,BraTS-PED-00010-000,2025,train,The Children's Hospital of Philadelphia,C2579556,5235,14.3,Female,Not Hispanic or Latino,White,1492,pre,TRUE
+sub-00010,ses-000,no,,,,,,,,train,3,BraTS-2025,BraTS-PED-00013-000,2025,train,The Children's Hospital of Philadelphia,C3170940,3050,8.4,Male,Not Hispanic or Latino,Black or African American,456,pre,TRUE
+sub-00011,ses-000,yes <<,,minor,,questionable ET labels,,,,train,1,BraTS-2025,BraTS-PED-00014-000,2025,train,Children's National Medical Center (CNMC),C3232317,3793,10.4,Female,Not Hispanic or Latino,Other/Unavailable/Not Reported,527,pre,TRUE
+sub-00012,ses-000,yes,,major,,"missing ET, borders, isn't it cystic?",,BK,TODO,train,4,BraTS-2025,BraTS-PED-00015-000,2025,train,The Children's Hospital of Philadelphia,C337143,2306,6.3,Female,Hispanic or Latino,Other/Unavailable/Not Reported,132,pre,TRUE
+sub-00013,ses-000,maybe,,,,is this right for cystic? compare with above ^^^,,,,train,3,BraTS-2025,BraTS-PED-00016-000,2025,train,The Children's Hospital of Philadelphia,C3418539,4798,13.1,Female,Not Hispanic or Latino,Asian,478,pre,TRUE
+sub-00014,ses-000,maybe,,minor,,"all 4 labels, jittery",,,,train,4,BraTS-2025,BraTS-PED-00017-000,2025,train,The Children's Hospital of Philadelphia,C3420015,3886,10.6,Male,Not Hispanic or Latino,Other/Unavailable/Not Reported,Not Reported,pre,TRUE
+sub-00015,ses-000,maybe,,,,this looks like a good one <<<<,,,,train,0,BraTS-2025,BraTS-PED-00018-000,2025,train,The Children's Hospital of Philadelphia,C34809,5907,16.2,Male,Hispanic or Latino,Other/Unavailable/Not Reported,2561,pre,TRUE
+sub-00016,ses-000,maybe,,,,this looks like a good one <<<<,,,,train,0,BraTS-2025,BraTS-PED-00019-000,2025,train,The Children's Hospital of Philadelphia,C3560973,2697,7.4,Male,Not Hispanic or Latino,Black or African American,772,pre,TRUE
+sub-00017,ses-000,yes,,,,unclear ET/NC/CC,,,,test,,BraTS-2025,BraTS-PED-00020-000,2025,train,The Children's Hospital of Philadelphia,C3615708,2601,7.1,Female,Not Hispanic or Latino,Other/Unavailable/Not Reported,328,pre,TRUE
+sub-00018,ses-000,yes <<,,major,,cystic component not labeled <<<,,EL,TODO,train,0,BraTS-2025,BraTS-PED-00021-000,2025,train,The Children's Hospital of Philadelphia,C377610,2430,6.7,Male,Hispanic or Latino,White,575,pre,TRUE
+sub-00019,ses-000,no,,,,,,,,train,1,BraTS-2025,BraTS-PED-00022-000,2025,train,The Children's Hospital of Philadelphia,C3790491,1389,3.8,Female,Not Hispanic or Latino,White,637,pre,TRUE
+sub-00020,ses-000,maybe,,,,"NC only, poor margins",,,,train,1,BraTS-2025,BraTS-PED-00024-000,2025,train,The Children's Hospital of Philadelphia,C3944487,1828,5,Female,Not Hispanic or Latino,White,630,pre,TRUE
+sub-00021,ses-000,maybe,,,,NC only,,,,train,0,BraTS-2025,BraTS-PED-00025-000,2025,train,The Children's Hospital of Philadelphia,C4132062,2526,6.9,Male,Hispanic or Latino,Other/Unavailable/Not Reported,550,pre,TRUE
+sub-00022,ses-000,maybe,,,,extra NC on boundary,,,,train,3,BraTS-2025,BraTS-PED-00026-000,2025,train,The Children's Hospital of Philadelphia,C4261089,4149,11.4,Female,Not Hispanic or Latino,Black or African American,287,pre,TRUE
+sub-00023,ses-000,maybe,,,,"small cystic, jittery ET",,,,train,3,BraTS-2025,BraTS-PED-00027-000,2025,train,The Children's Hospital of Philadelphia,C4281138,3876,10.6,Female,Not Hispanic or Latino,White,349,pre,TRUE
+sub-00024,ses-000,yes,,,,this looks like a good one <<<<,,,,train,4,BraTS-2025,BraTS-PED-00028-000,2025,train,The Children's Hospital of Philadelphia,C440955,3412,9.3,Male,Not Hispanic or Latino,White,3841,pre,TRUE
+sub-00025,ses-000,yes,,,,mixed NC / CC inside cyst,,,,train,1,BraTS-2025,BraTS-PED-00029-000,2025,train,The Children's Hospital of Philadelphia,C47478,2517,6.9,Female,Not Hispanic or Latino,White,10,pre,TRUE
+sub-00026,ses-000,yes,,,,should this be cystic component? <<<,,,,train,3,BraTS-2025,BraTS-PED-00030-000,2025,train,The Children's Hospital of Philadelphia,C54612,5283,14.5,Male,Unavailable,White,424,pre,TRUE
+sub-00027,ses-000,yes,,,,NC / CC unclear,,,,train,0,BraTS-2025,BraTS-PED-00031-000,2025,train,The Children's Hospital of Philadelphia,C54858,4230,11.6,Male,Hispanic or Latino,Other/Unavailable/Not Reported,284,pre,TRUE
+sub-00028,ses-000,yes,,,,"all 4 labels, unclear boundaries",,,,train,1,BraTS-2025,BraTS-PED-00032-000,2025,train,The Children's Hospital of Philadelphia,C60393,3151,8.6,Female,Not Hispanic or Latino,White,5274,pre,TRUE
+sub-00029,ses-000,yes <<,,major,,jittery labels,,AG,TODO,train,3,BraTS-2025,BraTS-PED-00033-000,2025,train,The Children's Hospital of Philadelphia,C624225,6159,16.9,Female,Not Hispanic or Latino,White,1776,pre,TRUE
+sub-00030,ses-000,yes,,,,"all 4 labels, unclear NC / CC",,,,train,4,BraTS-2025,BraTS-PED-00034-000,2025,train,The Children's Hospital of Philadelphia,C70848,4191,11.5,Female,Not Hispanic or Latino,White,615,pre,TRUE
+sub-00031,ses-000,yes,,,,ET labels unclear,,,,train,1,BraTS-2025,BraTS-PED-00035-000,2025,train,The Children's Hospital of Philadelphia,C714384,2868,7.9,Male,Not Hispanic or Latino,White,273,pre,TRUE
+sub-00032,ses-000,yes <<,,,,"all 4 labels, unclear",,,,train,3,BraTS-2025,BraTS-PED-00036-000,2025,train,The Children's Hospital of Philadelphia,C71709,6467,17.7,Female,Not Hispanic or Latino,White,534,pre,TRUE
+sub-00033,ses-000,no,,,,only NC,,,,train,1,BraTS-2025,BraTS-PED-00037-000,2025,train,The Children's Hospital of Philadelphia,C73431,6363,17.4,Male,Hispanic or Latino,White,113,pre,TRUE
+sub-00034,ses-000,maybe,,,,"jittery ET, small lesion",,,,train,2,BraTS-2025,BraTS-PED-00038-000,2025,train,The Children's Hospital of Philadelphia,C74661,5265,14.4,Female,Hispanic or Latino,White,147,pre,TRUE
+sub-00035,ses-000,no,,,,"all non-enahcning, weird presentation",,,,train,0,BraTS-2025,BraTS-PED-00039-000,2025,train,Lurie Children's Hospital,C796794,2775,7.6,Female,Not Hispanic or Latino,White,273,pre,TRUE
+sub-00036,ses-000,yes,,,,"good, but boundaries unclear <<<",,,,train,1,BraTS-2025,BraTS-PED-00040-000,2025,train,The Children's Hospital of Philadelphia,C805404,6027,16.5,Male,Not Hispanic or Latino,Other/Unavailable/Not Reported,467,pre,TRUE
+sub-00037,ses-000,yes <<,,,,missing CC <<<,,,,train,2,BraTS-2025,BraTS-PED-00041-000,2025,train,The Children's Hospital of Philadelphia,C805773,2046,5.6,Female,Not Hispanic or Latino,Black or African American,319,pre,TRUE
+sub-00038,ses-000,yes <<,,,,FP for CC <<< abnormal image angle,,,,train,1,BraTS-2025,BraTS-PED-00042-000,2025,train,The Children's Hospital of Philadelphia,C831603,1048,2.9,Female,Not Hispanic or Latino,White,561,pre,TRUE
+sub-00039,ses-000,yes,,,,"unclear labels for NC / PE, missing CC?",,,,train,4,BraTS-2025,BraTS-PED-00043-000,2025,train,The Children's Hospital of Philadelphia,C952758,3102,8.5,Female,Not Hispanic or Latino,White,2405,pre,TRUE
+sub-00040,ses-000,maybe,,,,bits of small enhancement,,,,train,2,BraTS-2025,BraTS-PED-00044-000,2025,train,Children's National Hospital (CNH),,4245,11.6,Female,Not Hispanic or Latino,White,654,pre,TRUE
+sub-00041,ses-000,maybe,,,,"mostly good, NC/ET/CC",,,,train,2,BraTS-2025,BraTS-PED-00045-000,2025,train,Children's National Hospital (CNH),,2204,6,Male,Unavailable,Black or African American,156,pre,TRUE
+sub-00042,ses-000,maybe,,,,PE labels patchy,,,,train,3,BraTS-2025,BraTS-PED-00046-000,2025,train,Children's National Hospital (CNH),,3056,8.4,Female,Unavailable,Black or African American,456,pre,TRUE
+sub-00043,ses-000,maybe,,,,,,,,train,4,BraTS-2025,BraTS-PED-00047-000,2025,train,Children's National Hospital (CNH),,1742,4.8,Male,Mixed,Mixed,347,pre,TRUE
+sub-00044,ses-000,maybe,,,,ET labels patchy,,,,train,1,BraTS-2025,BraTS-PED-00048-000,2025,train,Children's National Hospital (CNH),,1342,3.7,Female,Hispanic or Latino,Other Race,239,pre,TRUE
+sub-00045,ses-000,yes,,,,is CC label correct?,,,,train,0,BraTS-2025,BraTS-PED-00049-000,2025,train,Children's National Hospital (CNH),,2533,6.9,Female,Unavailable,Mixed,157,pre,TRUE
+sub-00046,ses-000,,,minor,,"overseg NC, too much ET on inferior slices",pontine,,,train,4,BraTS-2025,BraTS-PED-00050-000,2025,train,Children's National Hospital (CNH),,6282,17.2,Male,Unavailable,White,243,pre,TRUE
+sub-00047,ses-000,,,major (if incl CC),,"ET not visible on subtraction, ET ring too thick. CC should be NETC. (some?) NETC shoudl be PE",pontine,BK,TODO,train,2,BraTS-2025,BraTS-PED-00051-000,2025,train,Children's National Hospital (CNH),,2152,5.9,Female,Unavailable,Mixed,192,pre,TRUE
+sub-00048,ses-000,,,,,all NETC,pontine,,,train,4,BraTS-2025,BraTS-PED-00052-000,2025,train,Children's National Hospital (CNH),,2143,5.9,Female,Unavailable,Black or African American,407,pre,TRUE
+sub-00049,ses-000,,,,,sub image off (ET based on t1post). some questionable NETC margins,pontine,,,train,2,BraTS-2025,BraTS-PED-00053-000,2025,train,Children's National Hospital (CNH),,6714,18.4,Female,Unavailable,Black or African American,315,pre,TRUE
+sub-00050,ses-000,,,,,all NETC,pontine,,,train,2,BraTS-2025,BraTS-PED-00054-000,2025,train,Children's National Hospital (CNH),,2382,6.5,Female,Unavailable,White,623,pre,TRUE
+sub-00051,ses-000,yes <<,,possible,,"slightly thick ET, CC could be NETC, NETC could be PE???",pontine,EL,TODO,train,3,BraTS-2025,BraTS-PED-00055-000,2025,train,Children's National Hospital (CNH),,1529,4.2,Male,Unavailable,Mixed,479,pre,TRUE
+sub-00052,ses-000,yes <<,,,,NETC could be PE???,pontine,,,train,1,BraTS-2025,BraTS-PED-00056-000,2025,train,Children's National Hospital (CNH),,1907,5.2,Male,Unavailable,White,493,pre,TRUE
+sub-00053,ses-000,,,,,all NETC,pontine,,,test,,BraTS-2025,BraTS-PED-00057-000,2025,train,Children's National Hospital (CNH),,4590,12.6,Female,Unavailable,Black or African American,580,pre,TRUE
+sub-00054,ses-000,,,major,,"CC is highly questionable, probably all NETC",pontine,AG,TODO,train,3,BraTS-2025,BraTS-PED-00058-000,2025,train,Children's National Hospital (CNH),,2998,8.2,Male,Unavailable,Black or African American,397,pre,TRUE
+sub-00055,ses-000,,,,,all NETC,pontine,,,train,4,BraTS-2025,BraTS-PED-00059-000,2025,train,Children's National Hospital (CNH),,2143,5.9,Female,Unavailable,Unavailable,327,pre,TRUE
+sub-00056,ses-000,,,minor,,ET is oversegged on some slices,pontine,,,train,0,BraTS-2025,BraTS-PED-00060-000,2025,train,Children's National Hospital (CNH),,2030,5.6,Female,Unavailable,Black or African American,343,pre,TRUE
+sub-00057,ses-000,,,major (if incl CC),,"CC label should be NETC, too much ET, some NETC margins inaccurate",pontine,BK,TODO,train,0,BraTS-2025,BraTS-PED-00061-000,2025,train,Children's National Hospital (CNH),,2748,7.5,Male,Unavailable,White,231,pre,TRUE
+sub-00058,ses-000,,,major,,"ET labels wrong, should be all NETC",pontine,EL,TODO,train,1,BraTS-2025,BraTS-PED-00062-000,2025,train,Children's National Hospital (CNH),,2198,6,Male,Unavailable,White,256,pre,TRUE
+sub-00059,ses-000,yes <<,,major?,,"ET oversegged, includes artifact. There should be either more ET or (probably) none",pontine,AG,TODO,train,4,BraTS-2025,BraTS-PED-00063-000,2025,train,Children's National Hospital (CNH),,2934,8,Female,Unavailable,White,535,pre,TRUE
+sub-00060,ses-000,,,,,possible minor issues w ET,pontine,,,train,4,BraTS-2025,BraTS-PED-00064-000,2025,train,Children's National Hospital (CNH),,3425,9.4,Male,Not Hispanic or Latino,White,395,pre,TRUE
+sub-00061,ses-000,,,,,all NETC,pontine,,,train,4,BraTS-2025,BraTS-PED-00065-000,2025,train,Children's National Hospital (CNH),,2176,6,Male,Unavailable,Other Race,193,pre,TRUE
+sub-00062,ses-000,yes <<,,minor?,,all NETC. should some be PE?,pontine,,,train,3,BraTS-2025,BraTS-PED-00066-000,2025,train,Children's National Hospital (CNH),,2786,7.6,Male,Not Hispanic or Latino,White,392,pre,TRUE
+sub-00063,ses-000,,,major,,"some NETC labeled ET, CC is probably all NETC",pontine,BK,TODO,train,2,BraTS-2025,BraTS-PED-00067-000,2025,train,Children's National Hospital (CNH),,1959,5.4,Female,Unavailable,Black or African American,365,pre,TRUE
+sub-00064,ses-000,,,minor,,"all NETC, very sloppy boundaries",pontine,,,test,,BraTS-2025,BraTS-PED-00068-000,2025,train,Children's National Hospital (CNH),,1217,3.3,Female,Not Hispanic or Latino,White,518,pre,TRUE
+sub-00065,ses-000,,,minor?,,questionable NETC on superior-most slices,pontine,,,train,3,BraTS-2025,BraTS-PED-00069-000,2025,train,Children's National Hospital (CNH),,9456,25.9,Male,Unavailable,White,1311,pre,TRUE
+sub-00066,ses-000,,,,,sub image off.,pontine,,,train,1,BraTS-2025,BraTS-PED-00070-000,2025,train,Children's National Hospital (CNH),,2932,8,Male,Unavailable,White,356,pre,TRUE
+sub-00067,ses-000,,,,,,pontine,,,train,3,BraTS-2025,BraTS-PED-00071-000,2025,train,Children's National Hospital (CNH),,2082,5.7,Male,Unavailable,Unavailable,209,pre,TRUE
+sub-00068,ses-000,,,,,all NETC,pontine,,,train,4,BraTS-2025,BraTS-PED-00072-000,2025,train,Children's National Hospital (CNH),,1548,4.2,Female,Not Hispanic or Latino,White,850,pre,TRUE
+sub-00069,ses-000,,,major,,ET is oversegged on some slices,pontine,EL,TODO,train,4,BraTS-2025,BraTS-PED-00073-000,2025,train,Children's National Hospital (CNH),,4856,13.3,Female,Unavailable,Asian,651,pre,TRUE
+sub-00070,ses-000,,,,,all NETC,pontine,,,train,3,BraTS-2025,BraTS-PED-00074-000,2025,train,Children's National Hospital (CNH),,1978,5.4,Male,Not Hispanic or Latino,White,396,pre,TRUE
+sub-00071,ses-000,,,major,,probably should not include ET,pontine,AG,TODO,train,2,BraTS-2025,BraTS-PED-00075-000,2025,train,Children's National Hospital (CNH),,3176,8.7,Female,Unavailable,White,1129,pre,TRUE
+sub-00072,ses-000,,,major,,probably should not include ET,pontine,BK,TODO,test,,BraTS-2025,BraTS-PED-00076-000,2025,train,Children's National Hospital (CNH),,4778,13.1,Male,Unavailable,Other Race,307,pre,TRUE
+sub-00073,ses-000,,,,,all NETC,pontine,,,train,4,BraTS-2025,BraTS-PED-00077-000,2025,train,Children's National Hospital (CNH),,2755,7.5,Male,Unavailable,Black or African American,345,pre,TRUE
+sub-00074,ses-000,,,minor,,,pontine,,,train,0,BraTS-2025,BraTS-PED-00078-000,2025,train,Children's National Hospital (CNH),,2026,5.5,Female,Unavailable,Black or African American,462,pre,TRUE
+sub-00075,ses-000,,,very minor,,stray NETC voxels on patient L,pontine,,,train,2,BraTS-2025,BraTS-PED-00079-000,2025,train,Children's National Hospital (CNH),,2208,6,Male,Unavailable,Mixed,336,pre,TRUE
+sub-00076,ses-000,,,major,,"they call too much CC, ET labels are sloppy","deep gray matter, patient L",EL,,train,0,BraTS-2025,BraTS-PED-00080-000,2025,train,The Children's Hospital of Philadelphia,C1004049,3423,9.4,Male,Not Hispanic or Latino,White,197,pre,TRUE
+sub-00077,ses-000,yes <<,"ET is missed layer of voxels all around. the T1 bright spot is CC, the rest of the CC shoudl be NETC. ",minor,,"oversegged ET? much of the CC is bright T1, not on T2",L ventricle,,,train,1,BraTS-2025,BraTS-PED-00081-000,2025,train,The Children's Hospital of Philadelphia,C55227,5415,14.8,Female,Unavailable,White,438,pre,TRUE
+sub-00078,ses-000,,,minor,,some of the CC is questionable (mostly ok),pontine,,,train,1,BraTS-2025,BraTS-PED-00082-000,2025,train,The Children's Hospital of Philadelphia,C1190886,2706,7.4,Male,Not Hispanic or Latino,Black or African American,46,pre,TRUE
+sub-00079,ses-000,,,major?,,is CC actually CC or NETC?,L ventricle,AG,TODO,test,,BraTS-2025,BraTS-PED-00083-000,2025,train,The Children's Hospital of Philadelphia,C1046853,4849,13.3,Male,Not Hispanic or Latino,White,740,pre,TRUE
+sub-00080,ses-000,,,major,,the labeled ET is bright on T1post and T1pre,pontine,BK,TODO,train,1,BraTS-2025,BraTS-PED-00084-000,2025,train,The Children's Hospital of Philadelphia,C2381403,1055,2.9,Male,Not Hispanic or Latino,White,426,pre,TRUE
+sub-00081,ses-000,yes <<,"PE should all be NETC; ET should be redone (some overseg, some under). none should be CC",major?,,"not sure about PD, ET, CC",pontine,EL,TODO,train,0,BraTS-2025,BraTS-PED-00085-000,2025,train,The Children's Hospital of Philadelphia,C1002204,2514,6.9,Male,Not Hispanic or Latino,White,140,pre,TRUE
+sub-00082,ses-000,,,,,all NETC,pontine,,,test,,BraTS-2025,BraTS-PED-00086-000,2025,train,The Children's Hospital of Philadelphia,C1032339,1911,5.2,Female,Not Hispanic or Latino,White,560,pre,TRUE
+sub-00083,ses-000,,,,,all NETC,pontine,,,train,1,BraTS-2025,BraTS-PED-00087-000,2025,train,The Children's Hospital of Philadelphia,C806142,2598,7.1,Female,Hispanic or Latino,White,389,pre,TRUE
+sub-00084,ses-000,,,,,is interior CC?!?!,R ventricle,,,train,4,BraTS-2025,BraTS-PED-00088-000,2025,train,The Children's Hospital of Philadelphia,C1151895,3223,8.8,Male,Not Hispanic or Latino,White,203,pre,TRUE
+sub-00085,ses-000,yes <<,okay to call PE -> NETC. superiormost slices have vessels called ET. overall boundaries ok,major,easy,the PE labels seem wrong/random,cerebellum,AG,TODO,train,3,BraTS-2025,BraTS-PED-00089-000,2025,train,The Children's Hospital of Philadelphia,C17712,5858,16,Female,Not Hispanic or Latino,White,3011,pre,TRUE
+sub-00086,ses-000,,,major,,ET labels are poor,R anterior lobe,BK,TODO,train,3,BraTS-2025,BraTS-PED-00091-000,2025,train,The Children's Hospital of Philadelphia,C36285,6521,17.9,Male,Not Hispanic or Latino,White,2681,pre,TRUE
+sub-00087,ses-000,,,major,,labels are mixed up.,R anterior lobe,BK,TODO,train,3,BraTS-2025,BraTS-PED-00092-000,2025,train,The Children's Hospital of Philadelphia,C54981,2808,7.7,Male,Unavailable,White,798,pre,TRUE
+sub-00088,ses-000,,,minor,,"complex case: CC, NETC, ET all mixed up. some extraneous ET",L anterior,,,train,0,BraTS-2025,BraTS-PED-00093-000,2025,train,The Children's Hospital of Philadelphia,C312912,6574,18,Male,Not Hispanic or Latino,White,844,pre,TRUE
+sub-00089,ses-000,,,minor,,sloppy contours on a smallish tumor,R frontal,,,train,0,BraTS-2025,BraTS-PED-00094-000,2025,train,The Children's Hospital of Philadelphia,C2313999,7191,19.7,Male,Not Hispanic or Latino,White,1060,pre,TRUE
+sub-00090,ses-000,,,,,,L anterior,,,train,3,BraTS-2025,BraTS-PED-00095-000,2025,train,The Children's Hospital of Philadelphia,C2476974,153,0.4,Female,Not Hispanic or Latino,White,1483,pre,TRUE
+sub-00091,ses-000,yes <<,some of the dots inside ET are inaccurate; mostly ok,minor,easy,complex case. they carefully labeled around vessels.,R frontal,,,train,1,BraTS-2025,BraTS-PED-00096-000,2025,train,The Children's Hospital of Philadelphia,C952635,2444,6.7,Female,Not Hispanic or Latino,White,349,pre,TRUE
+sub-00092,ses-000,,,minor,,complex case. oversegged ET,R frontal,,,train,3,BraTS-2025,BraTS-PED-00097-000,2025,train,The Children's Hospital of Philadelphia,C466170,7353,20.1,Male,Not Hispanic or Latino,White,521,pre,TRUE
+sub-00093,ses-000,yes <<,"ET missed on ring. the bright spots are hemhorrage in TC, doesn't fit any label well. NETC is least-bad label",major,,"missing PE on superior slices, CC-looking areas but bright on t1pre",middle middle,EL,TODO,test,,BraTS-2025,BraTS-PED-00098-000,2025,train,The Children's Hospital of Philadelphia,C2751264,3362,9.2,Female,Not Hispanic or Latino,White,203,pre,TRUE
+sub-00094,ses-000,,,minor?,,tumor is in ventricle. some CC is not T2-bright,L anterior,,,train,4,BraTS-2025,BraTS-PED-00099-000,2025,train,The Children's Hospital of Philadelphia,C2832690,3411,9.3,Female,Not Hispanic or Latino,White,174,pre,TRUE
+sub-00095,ses-000,,,minor,,"empty tumor voxels, 1-2 superior slices missing ET",middle middle,,,train,1,BraTS-2025,BraTS-PED-00100-000,2025,train,The Children's Hospital of Philadelphia,C3553347,6412,17.6,Male,Not Hispanic or Latino,Black or African American,335,pre,TRUE
+sub-00096,ses-000,,,major,,"missed ET, probable unlabeled PE (called NETC)",L deep gray,AG,TODO,train,2,BraTS-2025,BraTS-PED-00101-000,2025,train,The Children's Hospital of Philadelphia,C3622350,6441,17.6,Male,Not Hispanic or Latino,White,831,pre,TRUE
+sub-00097,ses-000,yes <<,NETC extends too far inferiorly,minor,,"odd case: all NETC, nothing visible on T1s. oversegged NETC, maybe NETC->PE",R posterior,,,train,0,BraTS-2025,BraTS-PED-00102-000,2025,train,The Children's Hospital of Philadelphia,C3684096,1082,3,Female,Not Hispanic or Latino,White,1024,pre,TRUE
+sub-00098,ses-000,,,major,,"labels kinda okay, images terrible. should extra ET label be  PE? ",pontine,BK,TODO,train,2,BraTS-2025,BraTS-PED-00103-000,2025,train,Lurie Children's Hospital,C832956,3558,9.7,Male,Not Hispanic or Latino,Asian,139,pre,TRUE
+sub-00099,ses-000,,,major,,mixed up labels? PE seems random. ,pontine,EL,TODO,train,1,BraTS-2025,BraTS-PED-00104-000,2025,train,The Children's Hospital of Philadelphia,C2447454,4285,11.7,Female,Unavailable,White,457,pre,TRUE
+sub-00100,ses-000,yes <<,CC is probably NETC; small ETs on inf slices are indeed vessels and shoudl be NETC. ,major?,,"vessel labeled ET, CC label questionable",pontine,AG,TODO,train,1,BraTS-2025,BraTS-PED-00105-000,2025,train,The Children's Hospital of Philadelphia,C2580171,2201,6,Male,Not Hispanic or Latino,White,170,pre,TRUE
+sub-00101,ses-000,,,minor,,ET and CC labels are sloppy,middle middle,,,train,3,BraTS-2025,BraTS-PED-00106-000,2025,train,The Children's Hospital of Philadelphia,C29274,3735,10.2,Female,Unavailable,White,39,pre,TRUE
+sub-00102,ses-000,,,major,,need to remove most ET. motion artifacts on T1post,pontine,BK,TODO,train,3,BraTS-2025,BraTS-PED-00107-000,2025,train,The Children's Hospital of Philadelphia,C2671068,3054,8.4,Male,Not Hispanic or Latino,White,349,pre,TRUE
+sub-00103,ses-000,,,major,,"ET incorrect on inferior slices, spurious CC labels",pontine,EL,TODO,train,0,BraTS-2025,BraTS-PED-00108-000,2025,train,Lurie Children's Hospital,C832710,3377,9.2,Female,Not Hispanic or Latino,White,181,pre,TRUE
+sub-00104,ses-000,,,,,decent labels! large tumor w large CC,cerebellum,,,train,0,BraTS-2025,BraTS-PED-00109-000,2025,train,The Children's Hospital of Philadelphia,C3943995,2505,6.9,Female,Not Hispanic or Latino,White,152,pre,TRUE
+sub-00105,ses-000,,,minor,easy,"too much ET, should be little-to-none",pontine,,,train,0,BraTS-2025,BraTS-PED-00110-000,2025,train,The Children's Hospital of Philadelphia,C3423213,3319,9.1,Female,Unavailable,White,135,pre,TRUE
+sub-00106,ses-000,,,minor,easy,some ET on S slices is probably vessels,pontine,,,train,2,BraTS-2025,BraTS-PED-00112-000,2025,train,The Children's Hospital of Philadelphia,C3684465,2249,6.2,Female,Not Hispanic or Latino,White,190,pre,TRUE
+sub-00107,ses-000,,,major,medium,"PE is false, ET is undersegged",pontine,AG,TODO,train,4,BraTS-2025,BraTS-PED-00113-000,2025,train,The Children's Hospital of Philadelphia,C760140,4315,11.8,Female,Not Hispanic or Latino,White,536,pre,TRUE
+sub-00108,ses-000,,,minor,medium,slight underseg on CC. some small extra ETs. mostly good,pontine,,,train,3,BraTS-2025,BraTS-PED-00114-000,2025,train,The Children's Hospital of Philadelphia,C3790245,1441,3.9,Female,Not Hispanic or Latino,Black or African American,155,pre,TRUE
+sub-00109,ses-000,,,,,all NETC. slightly sloppy margins. ,pontine,,,train,4,BraTS-2025,BraTS-PED-00115-000,2025,train,The Children's Hospital of Philadelphia,C2706246,6636,18.2,Male,Not Hispanic or Latino,Black or African American,735,pre,TRUE
+sub-00110,ses-000,,,major?,easy,other case like this don't have PE labels,pontine,EL,TODO,train,4,BraTS-2025,BraTS-PED-00116-000,2025,train,The Children's Hospital of Philadelphia,C3337851,4830,13.2,Female,Not Hispanic or Latino,Black or African American,228,pre,TRUE
+sub-00111,ses-000,,,,,poor T1post contrast. ,pontine,,,train,4,BraTS-2025,BraTS-PED-00117-000,2025,train,The Children's Hospital of Philadelphia,C3290250,1513,4.1,Female,Not Hispanic or Latino,White,413,pre,TRUE
+sub-00112,ses-000,,,minor,easy,crazy-big ventricle. ET is probably vessels,pontine,,,train,3,BraTS-2025,BraTS-PED-00118-000,2025,train,The Children's Hospital of Philadelphia,C3958878,5809,15.9,Male,Not Hispanic or Latino,White,310,pre,TRUE
+sub-00113,ses-000,yes <<,lateral ET is probably not tumor; most inf slices have artifact labeled ET; PE spot should probably be called NETC,major,easy,"artifact labeled ET, questionable if actually multifocal (lateral focus)",pontine,AG,TODO,train,2,BraTS-2025,BraTS-PED-00119-000,2025,train,The Children's Hospital of Philadelphia,C3944118,2244,6.1,Female,Not Hispanic or Latino,White,233,pre,TRUE
+sub-00114,ses-000,,,major,hard,"too much ET, CC very sloppy","WM, R side",BK,TODO,train,0,BraTS-2025,BraTS-PED-00120-000,2025,train,The Children's Hospital of Philadelphia,C99753,2602,7.1,Male,Hispanic or Latino,Native Hawaiian or Other Pacific Islander,1569,pre,TRUE
+sub-00115,ses-000,yes <<,missed tumor laterally and anteriorly to labels. ,major?,easy,is anterior blob healthy? should periventricular PE be labeled,L ventricle,EL,TODO,train,1,BraTS-2025,BraTS-PED-00121-000,2025,train,Dayton Children's Hospital,C3635142,2060,5.6,Male,Not Hispanic or Latino,Black or African American;White,111,pre,TRUE
+sub-00116,ses-000,,,major,very hard,"complex case. ET messy, CC labels random. may want to leave this case out",L WM,AG,TODO,train,4,BraTS-2025,BraTS-PED-00122-000,2025,train,The Children's Hospital of Philadelphia,C89052,4249,11.6,Female,Not Hispanic or Latino,White,611,pre,TRUE
+sub-00117,ses-000,yes <<,"yes, resection. if keeping postop, could label RC as CC",major,,appears resected. post-op case?,L frontal,BK,TODO,train,3,BraTS-2025,BraTS-PED-00123-000,2025,train,,id_1,,,,,,,pre,TRUE
+sub-00118,ses-000,,,,,questionable CC,R deep GM,,,train,2,BraTS-2025,BraTS-PED-00124-000,2025,train,,id_10,,,,,,,pre,TRUE
+sub-00119,ses-000,yes <<,"yes, half cerebellum is tumor. labels ok",?,,overall TC boundary questionable. is 1/2 cerebellum tumor?,cerebellum,,,train,2,BraTS-2025,BraTS-PED-00125-000,2025,train,,id_100,,,,,,,pre,TRUE
+sub-00120,ses-000,,,major,easy,some NETC inside ring should be CC. superior NETC inside ventricle. oversegged ET,deep WM,BK,TODO,train,4,BraTS-2025,BraTS-PED-00126-000,2025,train,,id_104,,,,,,,pre,TRUE
+sub-00121,ses-000,,,,,some NETC painted over ventricle on superior,R frontal,,,test,,BraTS-2025,BraTS-PED-00127-000,2025,train,,id_11,,,,,,,pre,TRUE
+sub-00122,ses-000,,,,,all NETC,R superior,,,train,1,BraTS-2025,BraTS-PED-00128-000,2025,train,,id_12,,,,,,,pre,TRUE
+sub-00123,ses-000,,,minor,medium,"half of the NETC inside ring could be CC, ET margins sloppy",R superior ventricle,,,train,3,BraTS-2025,BraTS-PED-00129-000,2025,train,,id_13,,,,,,,pre,TRUE
+sub-00124,ses-000,,,minor?,easy,all NETC. maybe separate PE from NECT based on FLAIR texture?,R temporal,,,train,1,BraTS-2025,BraTS-PED-00130-000,2025,train,,id_15,,,,,,,pre,TRUE
+sub-00125,ses-000,,,major,medium,they labeled plenty of PE as NETC. possible CC inside ring,"WM, R side",EL,TODO,test,,BraTS-2025,BraTS-PED-00131-000,2025,train,,id_16,,,,,,,pre,TRUE
+sub-00126,ses-000,,,,,all NETC. maybe a little oversegged?,R frontal,,,train,3,BraTS-2025,BraTS-PED-00132-000,2025,train,,id_17,,,,,,,pre,TRUE
+sub-00127,ses-000,,,major,medium,inside ring(s) should be CC. much of NETC should be PE (or background/unlabeled),WM/ventricle L side,AG,TODO,train,0,BraTS-2025,BraTS-PED-00133-000,2025,train,,id_18,,,,,,,pre,TRUE
+sub-00128,ses-000,yes <<,"most S slices don'thave ET. ET way oversegged, NETC mostly okay",major,medium,"NETC oversegged. some ET questionable. most superior slices are labeled ET, hard to see due to artifact",R frontal,BK,TODO,train,2,BraTS-2025,BraTS-PED-00134-000,2025,train,,id_2,,,,,,,pre,TRUE
+sub-00129,ses-000,yes <<,there's no good way to distinguish PE-vs-NETC. he'd call it all NETC; vstar would call it PE,major,hard,arbitrary PE-NETC boundary. CC boundaries sloppy. RANDOM ERASURES ON Inf slices. remove from performance set?,R WM,EL,TODO,train,1,BraTS-2025,BraTS-PED-00135-000,2025,train,,id_21,,,,,,,pre,TRUE
+sub-00130,ses-000,,,major,hard,much of PE should be NETC. ET boundary is blocky/inaccurate. ,"deep GM, L side",AG,TODO,train,4,BraTS-2025,BraTS-PED-00136-000,2025,train,,id_28,,,,,,,pre,TRUE
+sub-00131,ses-000,,,,,all NETC. a bit oversegged perhaps,R frontal,,,test,,BraTS-2025,BraTS-PED-00137-000,2025,train,,id_3,,,,,,,pre,TRUE
+sub-00132,ses-000,,,medium,easy,labels too big on inferior slices. a couple random spurious CCs. sloppy PE margin,R frontal,BK,TODO,train,3,BraTS-2025,BraTS-PED-00138-000,2025,train,,id_30,,,,,,,pre,TRUE
+sub-00133,ses-000,,,,,"mostly NETC, small ET",R frontal,,,train,3,BraTS-2025,BraTS-PED-00139-000,2025,train,,id_32,,,,,,,pre,TRUE
+sub-00134,ses-000,,,medium,easy,most inferior slices have too much ET. oversegged NETC boundary,R temporal,EL,TODO,train,1,BraTS-2025,BraTS-PED-00140-000,2025,train,,id_33,,,,,,,pre,TRUE
+sub-00135,ses-000,yes <<,dural thickening due to surgery. keep thickened dura at ET. some ET in dura is missed on S slices,,,tumor in skull? resection? some inappropriate ET near skull,R fronto-parietal,,,test,,BraTS-2025,BraTS-PED-00141-000,2025,train,,id_35,,,,,,,pre,TRUE
+sub-00136,ses-000,,,minor,easy,problem w T1sub. edits needed for ET,R frontal,,,train,3,BraTS-2025,BraTS-PED-00142-000,2025,train,,id_36,,,,,,,pre,TRUE
+sub-00137,ses-000,,,major,easy,erased strip on central slice. NETC chould be PE. NETC boundary too big. ,L temporal,AG,TODO,test,,BraTS-2025,BraTS-PED-00143-000,2025,train,,id_37,,,,,,,pre,TRUE
+sub-00138,ses-000,yes <<,"yes, spot should be CC. posterior is prob PE+NETC, butcannot draw boundary; keep all NETC",,,problem w T1sub. labeled all NETC. for jeff: should dark T1/FLAIR spot be CC?,L pariental + occipital. multifocal?,,,train,2,BraTS-2025,BraTS-PED-00144-000,2025,train,,id_4,,,,,,,pre,TRUE
+sub-00139,ses-000,,,major,medium,problem w T1sub. interior of ring mislabeled as ET. too much PE (or maybe should be NETC). ,L cerebellum,,,train,4,BraTS-2025,BraTS-PED-00145-000,2025,train,,id_40,,,,,,,pre,TRUE
+sub-00140,ses-000,yes <<,"bleed in tumor, doesn't feed either CC or NETC well. can keep as NETC. outside circular area should be PE",major,hard,"problem w T1sub. complex case. ET labels are fucked. bright on T1post, not others",R fronto-parietal,BK,TODO,train,4,BraTS-2025,BraTS-PED-00146-000,2025,train,,id_41,,,,,,,pre,TRUE
+sub-00141,ses-000,,,minor?,easy,should PE be labeled all as NETC?,R frontal,,,train,0,BraTS-2025,BraTS-PED-00147-000,2025,train,,id_42,,,,,,,pre,TRUE
+sub-00142,ses-000,,,major,hard,missed lots of ET. one CC is dark on T2. missed some small CC spots. PE-NETC distinction is random,R frontal,EL,TODO,train,3,BraTS-2025,BraTS-PED-00148-000,2025,train,,id_44,,,,,,,pre,TRUE
+sub-00143,ses-000,,,,,all NETC. only visible on T2/FLAIR,L parietal WM,,,train,3,BraTS-2025,BraTS-PED-00149-000,2025,train,,id_48,,,,,,,pre,TRUE
+sub-00144,ses-000,,,minor,easy,all NETC. a little oversegged on some slices,L temporal-parietal,,,train,0,BraTS-2025,BraTS-PED-00150-000,2025,train,,id_5,,,,,,,pre,TRUE
+sub-00145,ses-000,,,,,"bad motion artifact. small tumor, all NETC, hard to evaluate due to artifact",R frontal,,,train,1,BraTS-2025,BraTS-PED-00151-000,2025,train,,id_54,,,,,,,pre,TRUE
+sub-00146,ses-000,yes <<,"missed label on S slice, and on R side; tumor is bilateral",,,"tumor is subtle, mostly visible on FLAIR. boundaries seem random",middle of ventricles,,,train,1,BraTS-2025,BraTS-PED-00152-000,2025,train,,id_58,,,,,,,pre,TRUE
+sub-00147,ses-000,yes <<,"reasonable CCs, could maybe be extended",medium?,easy,CCs need touchup? for jeff: should all that be CC? should CC be extended?,R frontal,,,train,1,BraTS-2025,BraTS-PED-00153-000,2025,train,,id_6,,,,,,,pre,TRUE
+sub-00148,ses-000,,,minor,easy,small dots of CC missed. possible missed ET (could be vessel),L temporal,,,train,2,BraTS-2025,BraTS-PED-00154-000,2025,train,,id_61,,,,,,,pre,TRUE
+sub-00149,ses-000,,,major,medium,"they randomly switch from NETC to PE halfway down. some overseg on ET (eg, includes midline)",R parietal,AG,TODO,train,0,BraTS-2025,BraTS-PED-00155-000,2025,train,,id_62,,,,,,,pre,TRUE
+sub-00150,ses-000,yes <<,missed NETC on midline posterior. many hyperintensities on L side (compared to R) not included,???,,large T2/FLAIR HIs all over the place. unclear where to draw any boundaries,L fronto-temporal,,,train,0,BraTS-2025,BraTS-PED-00156-000,2025,train,,id_63,,,,,,,pre,TRUE
+sub-00151,ses-000,,,,,,,,,test,,BraTS-2025,BraTS-PED-00158-000,2025,train,,id_65,,,,,,,pre,TRUE
+sub-00152,ses-000,,,,,,,,,train,4,BraTS-2025,BraTS-PED-00159-000,2025,train,,id_66,,,,,,,pre,TRUE
+sub-00153,ses-000,,,,,,,,,test,,BraTS-2025,BraTS-PED-00160-000,2025,train,,id_67,,,,,,,pre,TRUE
+sub-00154,ses-000,,,,,,,,,train,0,BraTS-2025,BraTS-PED-00161-000,2025,train,,id_69,,,,,,,pre,TRUE
+sub-00155,ses-000,,,,,,,,,train,4,BraTS-2025,BraTS-PED-00162-000,2025,train,,id_70,,,,,,,pre,TRUE
+sub-00156,ses-000,,,,,,,,,train,2,BraTS-2025,BraTS-PED-00163-000,2025,train,,id_71,,,,,,,pre,TRUE
+sub-00157,ses-000,,,,,,,,,train,2,BraTS-2025,BraTS-PED-00164-000,2025,train,,id_72,,,,,,,pre,TRUE
+sub-00158,ses-000,,,,,,,,,train,1,BraTS-2025,BraTS-PED-00165-000,2025,train,,id_73,,,,,,,pre,TRUE
+sub-00159,ses-000,,,,,,,,,train,3,BraTS-2025,BraTS-PED-00166-000,2025,train,,id_75,,,,,,,pre,TRUE
+sub-00160,ses-000,,,,,,,,,test,,BraTS-2025,BraTS-PED-00167-000,2025,train,,id_77,,,,,,,pre,TRUE
+sub-00161,ses-000,,,,,,,,,train,1,BraTS-2025,BraTS-PED-00168-000,2025,train,,id_78,,,,,,,pre,TRUE
+sub-00162,ses-000,,,,,,,,,train,1,BraTS-2025,BraTS-PED-00169-000,2025,train,,id_79,,,,,,,pre,TRUE
+sub-00163,ses-000,,,,,,,,,train,2,BraTS-2025,BraTS-PED-00170-000,2025,train,,id_8,,,,,,,pre,TRUE
+sub-00164,ses-000,,,,,,,,,train,2,BraTS-2025,BraTS-PED-00171-000,2025,train,,id_80,,,,,,,pre,TRUE
+sub-00165,ses-000,,,,,,,,,train,2,BraTS-2025,BraTS-PED-00172-000,2025,train,,id_81,,,,,,,pre,TRUE
+sub-00166,ses-000,,,,,,,,,train,1,BraTS-2025,BraTS-PED-00173-000,2025,train,,id_82,,,,,,,pre,TRUE
+sub-00167,ses-000,,,,,,,,,train,0,BraTS-2025,BraTS-PED-00174-000,2025,train,,id_84,,,,,,,pre,TRUE
+sub-00168,ses-000,,,,,,,,,train,0,BraTS-2025,BraTS-PED-00175-000,2025,train,,id_85,,,,,,,pre,TRUE
+sub-00169,ses-000,,,,,,,,,train,1,BraTS-2025,BraTS-PED-00176-000,2025,train,,id_86,,,,,,,pre,TRUE
+sub-00170,ses-000,,,,,,,,,train,0,BraTS-2025,BraTS-PED-00177-000,2025,train,,id_87,,,,,,,pre,TRUE
+sub-00171,ses-000,,,,,,,,,train,4,BraTS-2025,BraTS-PED-00178-000,2025,train,,id_88,,,,,,,pre,TRUE
+sub-00172,ses-000,,,,,,,,,train,4,BraTS-2025,BraTS-PED-00179-000,2025,train,,id_89,,,,,,,pre,TRUE
+sub-00173,ses-000,,,,,,,,,train,4,BraTS-2025,BraTS-PED-00180-000,2025,train,,id_91,,,,,,,pre,TRUE
+sub-00174,ses-000,,,,,,,,,train,2,BraTS-2025,BraTS-PED-00182-000,2025,train,,id_93,,,,,,,pre,TRUE
+sub-00175,ses-000,,,,,,,,,train,0,BraTS-2025,BraTS-PED-00183-000,2025,train,,id_96,,,,,,,pre,TRUE
+sub-00176,ses-000,,,,,,,,,train,3,BraTS-2025,BraTS-PED-00184-000,2025,train,,id_97,,,,,,,pre,TRUE
+sub-00177,ses-000,,,,,,,,,train,1,BraTS-2025,BraTS-PED-00185-000,2025,train,,id_99,,,,,,,pre,TRUE
+sub-00178,ses-000,,,,,,,,,test,,BraTS-2025,BraTS-PED-00186-000,2025,train,,,,,,,,,pre,TRUE
+sub-00179,ses-000,,,,,,,,,train,3,BraTS-2025,BraTS-PED-00187-000,2025,train,,,,,,,,,pre,TRUE
+sub-00180,ses-000,,,,,,,,,train,0,BraTS-2025,BraTS-PED-00188-000,2025,train,,,,,,,,,pre,TRUE
+sub-00181,ses-000,,,,,,,,,train,0,BraTS-2025,BraTS-PED-00189-000,2025,train,,,,,,,,,pre,TRUE
+sub-00182,ses-000,,,,,,,,,train,2,BraTS-2025,BraTS-PED-00190-000,2025,train,,,,,,,,,pre,TRUE
+sub-00183,ses-000,,,,,,,,,test,,BraTS-2025,BraTS-PED-00191-000,2025,train,,,,,,,,,pre,TRUE
+sub-00184,ses-000,,,,,,,,,train,2,BraTS-2025,BraTS-PED-00192-000,2025,train,,,,,,,,,pre,TRUE
+sub-00185,ses-000,,,,,,,,,train,3,BraTS-2025,BraTS-PED-00193-000,2025,train,,,,,,,,,pre,TRUE
+sub-00186,ses-000,,,,,,,,,train,1,BraTS-2025,BraTS-PED-00194-000,2025,train,,,,,,,,,pre,TRUE
+sub-00187,ses-000,,,,,,,,,train,4,BraTS-2025,BraTS-PED-00195-000,2025,train,,,,,,,,,pre,TRUE
+sub-00188,ses-000,,,,,,,,,test,,BraTS-2025,BraTS-PED-00196-000,2025,train,,,,,,,,,pre,TRUE
+sub-00189,ses-000,,,,,,,,,train,0,BraTS-2025,BraTS-PED-00197-000,2025,train,,,,,,,,,pre,TRUE
+sub-00190,ses-000,,,,,,,,,train,3,BraTS-2025,BraTS-PED-00198-000,2025,train,,,,,,,,,pre,TRUE
+sub-00191,ses-000,,,,,,,,,train,2,BraTS-2025,BraTS-PED-00199-000,2025,train,,,,,,,,,pre,TRUE
+sub-00192,ses-000,,,,,,,,,train,3,BraTS-2025,BraTS-PED-00200-000,2025,train,,,,,,,,,pre,TRUE
+sub-00193,ses-000,,,,,,,,,train,4,BraTS-2025,BraTS-PED-00201-000,2025,train,,,,,,,,,pre,TRUE
+sub-00194,ses-000,,,,,,,,,train,4,BraTS-2025,BraTS-PED-00202-000,2025,train,,,,,,,,,pre,TRUE
+sub-00195,ses-000,,,,,,,,,train,2,BraTS-2025,BraTS-PED-00203-000,2025,train,,,,,,,,,pre,TRUE
+sub-00196,ses-000,,,,,,,,,train,2,BraTS-2025,BraTS-PED-00204-000,2025,train,,,,,,,,,pre,TRUE
+sub-00197,ses-000,,,,,,,,,train,1,BraTS-2025,BraTS-PED-00205-000,2025,train,,,,,,,,,pre,TRUE
+sub-00198,ses-000,,,,,,,,,train,0,BraTS-2025,BraTS-PED-00206-000,2025,train,,,,,,,,,pre,TRUE
+sub-00199,ses-000,,,,,,,,,train,1,BraTS-2025,BraTS-PED-00207-000,2025,train,,,,,,,,,pre,TRUE
+sub-00200,ses-000,,,,,,,,,train,0,BraTS-2025,BraTS-PED-00208-000,2025,train,,,,,,,,,pre,TRUE
+sub-00201,ses-000,,,,,,,,,test,,BraTS-2025,BraTS-PED-00209-000,2025,train,,,,,,,,,pre,TRUE
+sub-00202,ses-000,,,,,,,,,train,2,BraTS-2025,BraTS-PED-00210-000,2025,train,,,,,,,,,pre,TRUE
+sub-00203,ses-000,,,,,,,,,train,1,BraTS-2025,BraTS-PED-00211-000,2025,train,,,,,,,,,pre,TRUE
+sub-00204,ses-000,,,,,,,,,train,4,BraTS-2025,BraTS-PED-00212-000,2025,train,,,,,,,,,pre,TRUE
+sub-00205,ses-000,,,,,,,,,train,4,BraTS-2025,BraTS-PED-00213-000,2025,train,,,,,,,,,pre,TRUE
+sub-00206,ses-000,,,,,,,,,test,,BraTS-2025,BraTS-PED-00214-000,2025,train,,,,,,,,,pre,TRUE
+sub-00207,ses-000,,,,,,,,,train,3,BraTS-2025,BraTS-PED-00215-000,2025,train,,,,,,,,,pre,TRUE
+sub-00208,ses-000,,,,,,,,,train,2,BraTS-2025,BraTS-PED-00216-000,2025,train,,,,,,,,,pre,TRUE
+sub-00209,ses-000,,,,,,,,,train,4,BraTS-2025,BraTS-PED-00217-000,2025,train,,,,,,,,,pre,TRUE
+sub-00210,ses-000,,,,,,,,,train,4,BraTS-2025,BraTS-PED-00218-000,2025,train,,,,,,,,,pre,TRUE
+sub-00211,ses-000,,,,,,,,,train,0,BraTS-2025,BraTS-PED-00219-000,2025,train,,,,,,,,,pre,TRUE
+sub-00212,ses-000,,,,,,,,,train,1,BraTS-2025,BraTS-PED-00220-000,2025,train,,,,,,,,,pre,TRUE
+sub-00213,ses-000,,,,,,,,,train,2,BraTS-2025,BraTS-PED-00221-000,2025,train,,,,,,,,,pre,TRUE
+sub-00214,ses-000,,,,,,,,,train,3,BraTS-2025,BraTS-PED-00222-000,2025,train,,,,,,,,,pre,TRUE
+sub-00215,ses-000,,,,,,,,,train,2,BraTS-2025,BraTS-PED-00223-000,2025,train,,,,,,,,,pre,TRUE
+sub-00216,ses-000,,,,,,,,,train,0,BraTS-2025,BraTS-PED-00224-000,2025,train,,,,,,,,,pre,TRUE
+sub-00217,ses-000,,,,,,,,,test,,BraTS-2025,BraTS-PED-00225-000,2025,train,,,,,,,,,pre,TRUE
+sub-00218,ses-000,,,,,,,,,train,1,BraTS-2025,BraTS-PED-00226-000,2025,train,,,,,,,,,pre,TRUE
+sub-00219,ses-000,,,,,,,,,train,4,BraTS-2025,BraTS-PED-00227-000,2025,train,,,,,,,,,pre,TRUE
+sub-00220,ses-000,,,,,,,,,train,3,BraTS-2025,BraTS-PED-00228-000,2025,train,,,,,,,,,pre,TRUE
+sub-00221,ses-000,,,,,,,,,train,3,BraTS-2025,BraTS-PED-00229-000,2025,train,,,,,,,,,pre,TRUE
+sub-00222,ses-000,,,,,,,,,train,0,BraTS-2025,BraTS-PED-00230-000,2025,train,,,,,,,,,pre,TRUE
+sub-00223,ses-000,,,,,,,,,train,2,BraTS-2025,BraTS-PED-00231-000,2025,train,,,,,,,,,pre,TRUE
+sub-00224,ses-000,,,,,,,,,train,0,BraTS-2025,BraTS-PED-00232-000,2025,train,,,,,,,,,pre,TRUE
+sub-00225,ses-000,,,,,,,,,train,4,BraTS-2025,BraTS-PED-00233-000,2025,train,,,,,,,,,pre,TRUE
+sub-00226,ses-000,,,,,,,,,train,3,BraTS-2025,BraTS-PED-00234-000,2025,train,,,,,,,,,pre,TRUE
+sub-00227,ses-000,,,,,,,,,train,0,BraTS-2025,BraTS-PED-00235-000,2025,train,,,,,,,,,pre,TRUE
+sub-00228,ses-000,,,,,,,,,train,0,BraTS-2025,BraTS-PED-00236-000,2025,train,,,,,,,,,pre,TRUE
+sub-00229,ses-000,,,,,,,,,train,2,BraTS-2025,BraTS-PED-00237-000,2025,train,,,,,,,,,pre,TRUE
+sub-00230,ses-000,,,,,,,,,train,2,BraTS-2025,BraTS-PED-00238-000,2025,train,,,,,,,,,pre,TRUE
+sub-00231,ses-000,,,,,,,,,train,4,BraTS-2025,BraTS-PED-00239-000,2025,train,,,,,,,,,pre,TRUE
+sub-00232,ses-000,,,,,,,,,train,1,BraTS-2025,BraTS-PED-00240-000,2025,train,,,,,,,,,pre,TRUE
+sub-00233,ses-000,,,,,,,,,test,,BraTS-2025,BraTS-PED-00241-000,2025,train,,,,,,,,,pre,TRUE
+sub-00234,ses-000,,,,,,,,,train,1,BraTS-2025,BraTS-PED-00242-000,2025,train,,,,,,,,,pre,TRUE
+sub-00235,ses-000,,,,,,,,,train,0,BraTS-2025,BraTS-PED-00243-000,2025,train,,,,,,,,,pre,TRUE
+sub-00236,ses-000,,,,,,,,,train,1,BraTS-2025,BraTS-PED-00244-000,2025,train,,,,,,,,,pre,TRUE
+sub-00237,ses-000,,,,,,,,,train,1,BraTS-2025,BraTS-PED-00245-000,2025,train,,,,,,,,,pre,TRUE
+sub-00238,ses-000,,,,,,,,,test,,BraTS-2025,BraTS-PED-00246-000,2025,train,,,,,,,,,pre,TRUE
+sub-00239,ses-000,,,,,,,,,train,2,BraTS-2025,BraTS-PED-00247-000,2025,train,,,,,,,,,pre,TRUE
+sub-00240,ses-000,,,,,,,,,train,0,BraTS-2025,BraTS-PED-00248-000,2025,train,,,,,,,,,pre,TRUE
+sub-00241,ses-000,,,,,,,,,train,3,BraTS-2025,BraTS-PED-00249-000,2025,train,,,,,,,,,pre,TRUE
+sub-00242,ses-000,,,,,,,,,train,3,BraTS-2025,BraTS-PED-00251-000,2025,train,,,,,,,,,pre,TRUE
+sub-00243,ses-000,,,,,,,,,train,0,BraTS-2025,BraTS-PED-00252-000,2025,train,,,,,,,,,pre,TRUE
+sub-00244,ses-000,,,,,,,,,train,2,BraTS-2025,BraTS-PED-00253-000,2025,train,,,,,,,,,pre,TRUE
+sub-00245,ses-000,,,,,,,,,train,4,BraTS-2025,BraTS-PED-00254-000,2025,train,,,,,,,,,pre,TRUE
+sub-00246,ses-000,,,,,,,,,train,1,BraTS-2025,BraTS-PED-00255-000,2025,train,,,,,,,,,pre,TRUE
+sub-00247,ses-000,,,,,,,,,train,4,BraTS-2025,BraTS-PED-00256-000,2025,train,,,,,,,,,pre,TRUE
+sub-00248,ses-000,,,,,,,,,train,4,BraTS-2025,BraTS-PED-00257-000,2025,train,,,,,,,,,pre,TRUE
+sub-00249,ses-000,,,,,,,,,train,2,BraTS-2025,BraTS-PED-00258-000,2025,train,,,,,,,,,pre,TRUE
+sub-00250,ses-000,,,,,,,,,train,0,BraTS-2025,BraTS-PED-00259-000,2025,train,,,,,,,,,pre,TRUE
+sub-00251,ses-000,,,,,,,,,train,3,BraTS-2025,BraTS-PED-00260-000,2025,train,,,,,,,,,pre,TRUE
+sub-00252,ses-000,,,,,,,,,train,2,BraTS-2025,BraTS-PED-00261-000,2025,train,,,,,,,,,pre,TRUE
+sub-00253,ses-000,,,,,,,,,train,0,BraTS-2025,BraTS-PED-00262-000,2025,train,,,,,,,,,pre,TRUE
+sub-00254,ses-000,,,,,,,,,train,0,BraTS-2025,BraTS-PED-00263-000,2025,train,,,,,,,,,pre,TRUE
+sub-00255,ses-000,,,,,,,,,train,4,BraTS-2025,BraTS-PED-00264-000,2025,train,,,,,,,,,pre,TRUE
+sub-00256,ses-000,,,,,,,,,train,2,BraTS-2025,BraTS-PED-00265-000,2025,train,,,,,,,,,pre,TRUE
+sub-00257,ses-000,,,,,,,,,train,0,BraTS-2025,BraTS-PED-00266-000,2025,train,,,,,,,,,pre,TRUE

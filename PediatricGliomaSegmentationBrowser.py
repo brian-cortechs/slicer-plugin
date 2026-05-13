@@ -1,3 +1,4 @@
+YOUR_INITIALS = "BK"
 
 IMAGES_ROOT = (
     "/Users/brian/repos/pediatric-glioma-segmentation/data/datasets/derivatives/"
@@ -6,6 +7,9 @@ IMAGES_ROOT = (
 SEGMENTATIONS_ROOT = (
     "/Users/brian/repos/pediatric-glioma-segmentation/data/datasets/derivatives/"
     "preprocessed/ground-truth-segs"
+)
+PARTICIPANTS_CSV_PATH = (
+    "/Users/brian/repos/slicer-plugin/pediatric-glioma-participants.csv"
 )
 SEGMENT_LABEL_NAMES = {
     1: "enhancing tissue",
@@ -25,6 +29,7 @@ MODALITY_RULES = [
     ("_FLAIR", "FLAIR"),
 ]
 
+import csv
 import os
 from dataclasses import dataclass
 from typing import List
@@ -129,40 +134,87 @@ def _displayed_volume_names(use_subtraction: bool) -> List[str]:
     ]
 
 
-def discover_sessions(images_root: str, segmentations_root: str) -> List[SessionRecord]:
+def _compact_path(path: str, keep_parts: int = 3) -> str:
+    path_parts = [part for part in path.split(os.sep) if part]
+    if len(path_parts) <= keep_parts:
+        return path
+    return os.sep.join(["...", *path_parts[-keep_parts:]])
+
+
+def _normalize_assignee(value: str) -> str:
+    return (value or "").strip().upper()
+
+
+def _read_assigned_session_keys(
+    participants_csv_path: str,
+    assignee_initials: str,
+) -> List[tuple]:
+    if not os.path.isfile(participants_csv_path):
+        return []
+
+    assigned_session_keys = []
+    seen_session_keys = set()
+    target_assignee = _normalize_assignee(assignee_initials)
+
+    with open(participants_csv_path, newline="", encoding="utf-8-sig") as csv_file:
+        for row in csv.DictReader(csv_file):
+            if _normalize_assignee(row.get("assignee")) != target_assignee:
+                continue
+
+            subject_id = (row.get("participant_id") or "").strip()
+            session_id = (row.get("session_id") or "").strip()
+            if not subject_id or not session_id:
+                continue
+
+            session_key = (subject_id, session_id)
+            if session_key in seen_session_keys:
+                continue
+
+            assigned_session_keys.append(session_key)
+            seen_session_keys.add(session_key)
+
+    return assigned_session_keys
+
+
+def discover_sessions(
+    images_root: str,
+    segmentations_root: str,
+    participants_csv_path: str = PARTICIPANTS_CSV_PATH,
+    assignee_initials: str = YOUR_INITIALS,
+) -> List[SessionRecord]:
     sessions: List[SessionRecord] = []
 
-    for subject_id in _list_subdirectories(images_root, "sub-"):
-        subject_images_dir = os.path.join(images_root, subject_id)
+    for subject_id, session_id in _read_assigned_session_keys(
+        participants_csv_path,
+        assignee_initials,
+    ):
+        image_anat_dir = os.path.join(images_root, subject_id, session_id, "anat")
+        image_paths = _list_nifti_files(image_anat_dir)
+        if len(image_paths) != 4:
+            continue
 
-        for session_id in _list_subdirectories(subject_images_dir, "ses-"):
-            image_anat_dir = os.path.join(subject_images_dir, session_id, "anat")
-            image_paths = _list_nifti_files(image_anat_dir)
-            if len(image_paths) != 4:
-                continue
+        segmentation_anat_dir = os.path.join(
+            segmentations_root,
+            subject_id,
+            session_id,
+            "anat",
+        )
+        segmentation_paths = [
+            path
+            for path in _list_nifti_files(segmentation_anat_dir)
+            if "_dseg" in os.path.basename(path)
+        ]
+        if len(segmentation_paths) != 1:
+            continue
 
-            segmentation_anat_dir = os.path.join(
-                segmentations_root,
-                subject_id,
-                session_id,
-                "anat",
+        sessions.append(
+            SessionRecord(
+                subject_id=subject_id,
+                session_id=session_id,
+                image_paths=sorted(image_paths, key=_modality_sort_key),
+                segmentation_path=segmentation_paths[0],
             )
-            segmentation_paths = [
-                path
-                for path in _list_nifti_files(segmentation_anat_dir)
-                if "_dseg" in os.path.basename(path)
-            ]
-            if len(segmentation_paths) != 1:
-                continue
-
-            sessions.append(
-                SessionRecord(
-                    subject_id=subject_id,
-                    session_id=session_id,
-                    image_paths=sorted(image_paths, key=_modality_sort_key),
-                    segmentation_path=segmentation_paths[0],
-                )
-            )
+        )
 
     return sessions
 
@@ -206,9 +258,22 @@ class PediatricGliomaSegmentationBrowserWidget(
         formLayout = qt.QFormLayout(collapsibleButton)
 
         self.pathsLabel = qt.QLabel(
-            f"Images: {IMAGES_ROOT}\nSegmentations: {SEGMENTATIONS_ROOT}"
+            "Images: "
+            f"{_compact_path(IMAGES_ROOT)}\n"
+            "Segmentations: "
+            f"{_compact_path(SEGMENTATIONS_ROOT)}\n"
+            "Participants CSV: "
+            f"{os.path.basename(PARTICIPANTS_CSV_PATH)}\n"
+            f"Assignee initials: {YOUR_INITIALS}"
         )
         self.pathsLabel.wordWrap = True
+        self.pathsLabel.maximumWidth = 320
+        self.pathsLabel.toolTip = (
+            f"Images: {IMAGES_ROOT}\n"
+            f"Segmentations: {SEGMENTATIONS_ROOT}\n"
+            f"Participants CSV: {PARTICIPANTS_CSV_PATH}\n"
+            f"Assignee initials: {YOUR_INITIALS}"
+        )
         formLayout.addRow("Dataset roots", self.pathsLabel)
 
         self.refreshButton = qt.QPushButton("Refresh sessions")
@@ -265,8 +330,10 @@ class PediatricGliomaSegmentationBrowserWidget(
 
         if not sessions:
             self.statusLabel.text = (
-                "No valid sessions found. A valid session must contain exactly four "
-                "NIfTI images and one `_dseg` segmentation."
+                "No valid assigned sessions found for "
+                f"`{YOUR_INITIALS}`. A valid session must appear in "
+                "`pediatric-glioma-participants.csv` and contain exactly four "
+                "NIfTI images plus one `_dseg` segmentation."
             )
             self.updateNavigationButtons()
             return
@@ -575,7 +642,7 @@ class PediatricGliomaSegmentationBrowserLogic(ScriptedLoadableModuleLogic):
       <item splitSize="500">
         <view class="vtkMRMLSliceNode" singletontag="Compare1">
           <property name="orientation" action="default">Axial</property>
-          <property name="viewlabel" action="default">D</property>
+          <property name="viewlabel" action="default">Blue</property>
           <property name="viewcolor" action="default">#4C7DFF</property>
         </view>
       </item>

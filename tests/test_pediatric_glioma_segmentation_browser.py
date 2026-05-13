@@ -26,6 +26,9 @@ class DiscoverSessionsTest(unittest.TestCase):
         self.root = Path(self.temp_dir.name)
         self.images_root = self.root / "images"
         self.segmentations_root = self.root / "segmentations"
+        self.participants_csv_path = (
+            self.root / "pediatric-glioma-participants.csv"
+        )
 
     def tearDown(self):
         self.temp_dir.cleanup()
@@ -33,6 +36,17 @@ class DiscoverSessionsTest(unittest.TestCase):
     def _touch(self, path: Path):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("", encoding="utf-8")
+
+    def _write_participants_csv(self, rows):
+        self.participants_csv_path.write_text(
+            "participant_id,session_id,assignee\n"
+            + "\n".join(
+                f"{participant_id},{session_id},{assignee}"
+                for participant_id, session_id, assignee in rows
+            )
+            + "\n",
+            encoding="utf-8",
+        )
 
     def test_discovers_only_complete_sessions(self):
         valid_image_dir = self.images_root / "sub-00001" / "ses-000" / "anat"
@@ -61,10 +75,18 @@ class DiscoverSessionsTest(unittest.TestCase):
         self._touch(
             missing_seg_dir / "sub-00002_ses-000_space-orig_dseg.nii.gz"
         )
+        self._write_participants_csv(
+            [
+                ("sub-00001", "ses-000", "BK"),
+                ("sub-00002", "ses-000", "AG"),
+            ]
+        )
 
         sessions = self.module.discover_sessions(
             str(self.images_root),
             str(self.segmentations_root),
+            str(self.participants_csv_path),
+            "BK",
         )
 
         self.assertEqual(len(sessions), 1)
@@ -81,6 +103,24 @@ class DiscoverSessionsTest(unittest.TestCase):
         self.assertEqual(
             Path(sessions[0].segmentation_path).name,
             "sub-00001_ses-000_space-orig_dseg.nii.gz",
+        )
+
+    def test_reads_assigned_sessions_in_csv_order(self):
+        self._write_participants_csv(
+            [
+                ("sub-00003", "ses-000", "BK"),
+                ("sub-00001", "ses-001", "BK"),
+                ("sub-00003", "ses-000", "BK"),
+                ("sub-00002", "ses-000", "AG"),
+            ]
+        )
+
+        self.assertEqual(
+            self.module._read_assigned_session_keys(
+                str(self.participants_csv_path),
+                "BK",
+            ),
+            [("sub-00003", "ses-000"), ("sub-00001", "ses-001")],
         )
 
     def test_display_name_mapping(self):
@@ -112,7 +152,7 @@ class DiscoverSessionsTest(unittest.TestCase):
     def test_displayed_volume_names(self):
         self.assertEqual(
             self.module._displayed_volume_names(use_subtraction=True),
-            ["T1post", "T1pre", "FLAIR", "T1post - T1pre"],
+            ["T1post", "T1pre", "FLAIR", "T1 subtraction"],
         )
         self.assertEqual(
             self.module._displayed_volume_names(use_subtraction=False),
