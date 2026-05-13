@@ -1,4 +1,3 @@
-YOUR_INITIALS = "BK"
 
 IMAGES_ROOT = (
     "/Users/brian/repos/pediatric-glioma-segmentation/data/datasets/derivatives/"
@@ -8,6 +7,7 @@ SEGMENTATIONS_ROOT = (
     "/Users/brian/repos/pediatric-glioma-segmentation/data/datasets/derivatives/"
     "preprocessed/ground-truth-segs"
 )
+YOUR_INITIALS = "BK"  # select CSV rows for this assignee
 PARTICIPANTS_CSV_PATH = (
     "/Users/brian/repos/slicer-plugin/pediatric-glioma-participants.csv"
 )

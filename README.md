@@ -8,7 +8,7 @@ The module is currently hard-coded to these dataset roots:
 - Images: `/Users/brian/repos/pediatric-glioma-segmentation/data/datasets/derivatives/preprocessed/images`
 - Segmentations: `/Users/brian/repos/pediatric-glioma-segmentation/data/datasets/derivatives/preprocessed/ground-truth-segs`
 - Participants CSV: `/Users/brian/repos/slicer-plugin/pediatric-glioma-participants.csv`
-- Assignee filter: `YOUR_INITIALS = "BK"` by default
+- Assignee filter: `YOUR_INITIALS = "BK"`
 
 ## What it does
 
@@ -19,14 +19,13 @@ The module is currently hard-coded to these dataset roots:
 - Keeps only sessions with exactly 4 image files in `anat/`.
 - Keeps only sessions with exactly 1 segmentation file containing `_dseg` in the
   matching segmentation `anat/` folder.
-- Lists all valid sessions in a dropdown.
-- Adds `Previous` and `Next` buttons for quick case-to-case navigation.
+- Lists all valid sessions in a dropdown. Adds `Previous` and `Next` buttons for quick case-to-case navigation.
 - When you select a session, unloads the prior case loaded by this module, then
   loads the 4 images and the segmentation for the selected session.
 - Switches Slicer into a custom 2x2 linked axial slice layout so the 4 loaded
   modalities are visible side by side.
 - Displays `T1post`, `T1pre`, `FLAIR`, and a derived `T1post - T1pre`
-  subtraction image instead of showing `T2` directly.
+  subtraction image.
 - If `T1post` and `T1pre` do not have matching shape and geometry, shows an
   alert and falls back to displaying `T2` instead of the subtraction image.
 - Links the slice views so pan, zoom, and slice scrolling stay synchronized.
@@ -46,6 +45,8 @@ The module is currently hard-coded to these dataset roots:
 4. Restart Slicer or click `Reload and Test`.
 5. Open the `Pediatric Glioma Segmentation Browser` module.
 6. Pick a session from the dropdown or use `Previous` / `Next`.
+
+The windowing tool will be automatically selected. **If you want to change one of the images, remember to unlink the views first**, otherwise you'll change to the newly selected image in all four views.
 
 ## Reload during development
 
