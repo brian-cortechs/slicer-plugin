@@ -8,6 +8,7 @@ The module is currently hard-coded to these dataset roots:
 - Images: `/Users/brian/repos/pediatric-glioma-segmentation/data/datasets/derivatives/preprocessed/images`
 - Segmentations: `/Users/brian/repos/pediatric-glioma-segmentation/data/datasets/derivatives/preprocessed/ground-truth-segs`
 - Participants CSV: `/Users/brian/repos/slicer-plugin/pediatric-glioma-participants.csv`
+- Output folder: `/Users/brian/repos/pediatric-glioma-segmentation/exported-segmentations`
 - Assignee filter: `YOUR_INITIALS = "BK"`
 
 ## What it does
@@ -35,6 +36,13 @@ The module is currently hard-coded to these dataset roots:
   visible.
 - Adds a global `Shift+V` shortcut to toggle the current segmentation
   visibility while editing.
+- Uses the top-level `DISPLAYED_VIEW_VOLUME_NAMES` constant to control which
+  volumes appear in the four slice views and in what order.
+- Embeds the full Segment Editor pane directly in this module so you can edit
+  without switching modules.
+- Adds an `Export segmentation` button that writes the current segmentation to
+  `OUTPUT_SEG_FOLDER` as a `.nii.gz` file using the original segmentation
+  filename, without a save confirmation dialog.
 - Names the loaded segmentation node `glioma segmentation`.
 - Renames loaded image nodes to cleaner modality labels: `T1post`, `T1pre`,
   `FLAIR`, and `T2`.
@@ -56,6 +64,8 @@ The module is currently hard-coded to these dataset roots:
 8. Adjust `Edit overlay` opacity if you want the editing source to be more or
    less visible across all views.
 9. Press `Shift+V` at any time to toggle all loaded segments on or off.
+10. Click `Export segmentation` to write the current edited segmentation to the
+    configured output folder.
 
 The windowing tool will be automatically selected after each case load.
 

@@ -149,14 +149,20 @@ class DiscoverSessionsTest(unittest.TestCase):
             "T2",
         )
 
-    def test_displayed_volume_names(self):
+    def test_resolved_displayed_volume_names(self):
         self.assertEqual(
-            self.module._displayed_volume_names(use_subtraction=True),
-            ["T1post", "T1pre", "FLAIR", "T1 subtraction"],
+            self.module._resolved_displayed_volume_names(
+                ["T1post", "T1pre", "T2", "T1 subtraction"],
+                ["T1post", "T1pre", "T2", "FLAIR", "T1 subtraction"],
+            ),
+            ["T1post", "T1pre", "T2", "T1 subtraction"],
         )
         self.assertEqual(
-            self.module._displayed_volume_names(use_subtraction=False),
-            ["T1post", "T1pre", "FLAIR", "T2"],
+            self.module._resolved_displayed_volume_names(
+                ["T1post", "T1pre", "T2", "T1 subtraction"],
+                ["T1post", "T1pre", "T2", "FLAIR"],
+            ),
+            ["T1post", "T1pre", "T2", "FLAIR"],
         )
         self.assertEqual(
             self.module._display_name_for_image_path(
@@ -177,6 +183,21 @@ class DiscoverSessionsTest(unittest.TestCase):
                 ]
             ),
             ["T1post", "FLAIR", "T1 subtraction", "T2"],
+        )
+
+    def test_output_segmentation_path(self):
+        session = self.module.SessionRecord(
+            subject_id="sub-00001",
+            session_id="ses-000",
+            image_paths=[],
+            segmentation_path=(
+                "/tmp/sub-00001/ses-000/anat/"
+                "sub-00001_ses-000_space-orig_dseg.nii.gz"
+            ),
+        )
+        self.assertEqual(
+            self.module._output_segmentation_path("/output/folder", session),
+            "/output/folder/sub-00001_ses-000_space-orig_dseg.nii.gz",
         )
 
     def test_toggle_segmentation_visibility(self):
