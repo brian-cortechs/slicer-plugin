@@ -165,6 +165,20 @@ class DiscoverSessionsTest(unittest.TestCase):
             "T2",
         )
 
+    def test_available_editing_source_names(self):
+        self.assertEqual(
+            self.module._available_editing_source_names(
+                [
+                    "T2",
+                    "FLAIR",
+                    "T1post",
+                    "other",
+                    "T1 subtraction",
+                ]
+            ),
+            ["T1post", "FLAIR", "T1 subtraction", "T2"],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

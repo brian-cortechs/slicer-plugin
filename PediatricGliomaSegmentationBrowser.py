@@ -1,26 +1,29 @@
-
-IMAGES_ROOT = (
-    "/Users/brian/repos/pediatric-glioma-segmentation/data/datasets/derivatives/"
-    "preprocessed/images"
-)
-SEGMENTATIONS_ROOT = (
-    "/Users/brian/repos/pediatric-glioma-segmentation/data/datasets/derivatives/"
-    "preprocessed/ground-truth-segs"
-)
+REPO_ROOT = "/Users/brian/repos/pediatric-glioma-segmentation"
+IMAGES_PATH = "data/datasets/derivatives/preprocessed/images"
+SEGMENTATIONS_PATH = "data/datasets/derivatives/ground-truth-segs"
 YOUR_INITIALS = "BK"  # select CSV rows for this assignee
 PARTICIPANTS_CSV_PATH = (
     "/Users/brian/repos/slicer-plugin/pediatric-glioma-participants.csv"
 )
+
 SEGMENT_LABEL_NAMES = {
     1: "enhancing tissue",
     2: "non-enhancing tumor core",
-    3: "peritumoral edema",
+    3: "cystic component",
+    4: "peritumoral edema"
 }
 
 SEGMENTATION_DISPLAY_NAME = "glioma segmentation"
 SUBTRACTION_DISPLAY_NAME = "T1 subtraction"
 CUSTOM_LAYOUT_ID = 1401
 FOUR_SLICE_VIEW_NAMES = ["Red", "Yellow", "Green", "Compare1"]
+EDITING_SOURCE_NAMES = [
+    "T1post",
+    "T1pre",
+    "FLAIR",
+    SUBTRACTION_DISPLAY_NAME,
+    "T2",
+]
 MODALITY_RULES = [
     ("ce-gadolinium_T1w", "T1post"),
     ("_T1w", "T1pre"),
@@ -33,6 +36,9 @@ import csv
 import os
 from dataclasses import dataclass
 from typing import List
+
+IMAGES_ROOT = os.path.join(REPO_ROOT, IMAGES_PATH)
+SEGMENTATIONS_ROOT = os.path.join(REPO_ROOT, SEGMENTATIONS_PATH)
 
 try:
     import ctk
@@ -141,6 +147,14 @@ def _compact_path(path: str, keep_parts: int = 3) -> str:
     return os.sep.join(["...", *path_parts[-keep_parts:]])
 
 
+def _available_editing_source_names(volume_names: List[str]) -> List[str]:
+    return [
+        volume_name
+        for volume_name in EDITING_SOURCE_NAMES
+        if volume_name in volume_names
+    ]
+
+
 def _normalize_assignee(value: str) -> str:
     return (value or "").strip().upper()
 
@@ -240,6 +254,8 @@ class PediatricGliomaSegmentationBrowserWidget(
         VTKObservationMixin.__init__(self)
         self.logic = None
         self.refreshButton = None
+        self.editingSourceSelector = None
+        self.foregroundOpacitySlider = None
         self.sessionSelector = None
         self.statusLabel = None
         self.pathsLabel = None
@@ -289,6 +305,24 @@ class PediatricGliomaSegmentationBrowserWidget(
         )
         formLayout.addRow("Session", self.sessionSelector)
 
+        self.editingSourceSelector = qt.QComboBox()
+        self.editingSourceSelector.toolTip = (
+            "Source volume used for Segment Editor tools such as Threshold, and "
+            "also shown as a foreground overlay in all four slice views."
+        )
+        formLayout.addRow("Editing source", self.editingSourceSelector)
+
+        self.foregroundOpacitySlider = ctk.ctkSliderWidget()
+        self.foregroundOpacitySlider.minimum = 0.0
+        self.foregroundOpacitySlider.maximum = 1.0
+        self.foregroundOpacitySlider.singleStep = 0.05
+        self.foregroundOpacitySlider.value = 0
+        self.foregroundOpacitySlider.decimals = 2
+        self.foregroundOpacitySlider.toolTip = (
+            "Opacity of the editing source foreground overlay shown in all views."
+        )
+        formLayout.addRow("Edit overlay", self.foregroundOpacitySlider)
+
         navigationLayout = qt.QHBoxLayout()
         self.previousButton = qt.QPushButton("Previous")
         self.previousButton.toolTip = "Load the previous valid session."
@@ -307,8 +341,15 @@ class PediatricGliomaSegmentationBrowserWidget(
         self.refreshButton.connect("clicked()", self.refreshSessions)
         self.previousButton.connect("clicked()", self.loadPreviousSession)
         self.nextButton.connect("clicked()", self.loadNextSession)
+        self.editingSourceSelector.connect(
+            "currentIndexChanged(int)", self.onEditingSourceChanged
+        )
+        self.foregroundOpacitySlider.connect(
+            "valueChanged(double)", self.onForegroundOpacityChanged
+        )
         self.sessionSelector.connect("currentIndexChanged(int)", self.onSessionSelected)
 
+        self.updateEditingControls()
         self.refreshSessions()
 
     def refreshSessions(self):
@@ -335,6 +376,7 @@ class PediatricGliomaSegmentationBrowserWidget(
                 "`pediatric-glioma-participants.csv` and contain exactly four "
                 "NIfTI images plus one `_dseg` segmentation."
             )
+            self.updateEditingControls()
             self.updateNavigationButtons()
             return
 
@@ -366,6 +408,38 @@ class PediatricGliomaSegmentationBrowserWidget(
         self.previousButton.enabled = has_sessions and current_index > 0
         self.nextButton.enabled = has_sessions and current_index < session_count - 1
 
+    def updateEditingControls(self):
+        available_source_names = self.logic.availableEditingSourceNames()
+        current_source_name = self.logic.currentEditingSourceName
+
+        self.editingSourceSelector.blockSignals(True)
+        self.editingSourceSelector.clear()
+        for source_name in available_source_names:
+            self.editingSourceSelector.addItem(source_name)
+        if current_source_name:
+            selected_index = self.editingSourceSelector.findText(current_source_name)
+            if selected_index >= 0:
+                self.editingSourceSelector.setCurrentIndex(selected_index)
+        self.editingSourceSelector.blockSignals(False)
+        self.editingSourceSelector.enabled = bool(available_source_names)
+
+        self.foregroundOpacitySlider.blockSignals(True)
+        self.foregroundOpacitySlider.value = self.logic.foregroundOpacity
+        self.foregroundOpacitySlider.blockSignals(False)
+        self.foregroundOpacitySlider.enabled = bool(available_source_names)
+
+    def onEditingSourceChanged(self, index: int):
+        if index < 0:
+            return
+        source_name = self.editingSourceSelector.itemText(index)
+        self.logic.setEditingSource(
+            source_name,
+            self.foregroundOpacitySlider.value,
+        )
+
+    def onForegroundOpacityChanged(self, value: float):
+        self.logic.setForegroundOpacity(value)
+
     def onSessionSelected(self, index: int):
         self.updateNavigationButtons()
         if index < 0:
@@ -377,6 +451,7 @@ class PediatricGliomaSegmentationBrowserWidget(
 
         try:
             self.logic.loadSession(session)
+            self.updateEditingControls()
             self.statusLabel.text = (
                 f"Loaded {session.display_name} "
                 f"({index + 1}/{self.sessionSelector.count}) with "
@@ -392,10 +467,19 @@ class PediatricGliomaSegmentationBrowserLogic(ScriptedLoadableModuleLogic):
         super().__init__()
         self.sessions: List[SessionRecord] = []
         self.loadedNodeIDs: List[str] = []
+        self.currentSegmentationNode = None
+        self.currentVolumeNodesByName = {}
+        self.currentEditingSourceName = None
+        self.foregroundOpacity = 0
 
     def refreshSessions(self) -> List[SessionRecord]:
         self.sessions = discover_sessions(IMAGES_ROOT, SEGMENTATIONS_ROOT)
         return self.sessions
+
+    def availableEditingSourceNames(self) -> List[str]:
+        return _available_editing_source_names(
+            list(self.currentVolumeNodesByName.keys())
+        )
 
     def loadSession(self, session: SessionRecord):
         if not SLICER_AVAILABLE:
@@ -403,6 +487,8 @@ class PediatricGliomaSegmentationBrowserLogic(ScriptedLoadableModuleLogic):
 
         self._removePreviouslyLoadedNodes()
         self._ensureFourSliceLayout()
+        self.currentSegmentationNode = None
+        self.currentVolumeNodesByName = {}
 
         volume_nodes = []
         for image_path in session.image_paths:
@@ -412,10 +498,56 @@ class PediatricGliomaSegmentationBrowserLogic(ScriptedLoadableModuleLogic):
         segmentation_node = self._loadSegmentation(session.segmentation_path)
         self._trackNode(segmentation_node)
         self._configureSegmentationDisplay(segmentation_node)
-        self._selectSegmentationForEditing(segmentation_node, volume_nodes)
         display_volume_nodes = self._buildDisplayVolumeNodes(volume_nodes, session)
+        self.currentSegmentationNode = segmentation_node
         self._assignVolumesToViews(display_volume_nodes)
+        self._restoreEditingSource()
         self._activateWindowLevelTool()
+
+    def setEditingSource(self, source_name: str, foreground_opacity: float = None):
+        if foreground_opacity is not None:
+            self.foregroundOpacity = foreground_opacity
+
+        if (
+            not source_name
+            or source_name not in self.currentVolumeNodesByName
+            or not self.currentSegmentationNode
+        ):
+            return
+
+        self.currentEditingSourceName = source_name
+        source_volume_node = self.currentVolumeNodesByName[source_name]
+        self._setSegmentEditorSourceVolume(
+            self.currentSegmentationNode,
+            source_volume_node,
+        )
+        self._assignForegroundVolumeToViews(
+            source_volume_node,
+            self.foregroundOpacity,
+        )
+
+    def setForegroundOpacity(self, foreground_opacity: float):
+        self.foregroundOpacity = foreground_opacity
+        if self.currentEditingSourceName:
+            self.setEditingSource(self.currentEditingSourceName)
+
+    def _restoreEditingSource(self):
+        available_source_names = self.availableEditingSourceNames()
+        if not available_source_names:
+            self.currentEditingSourceName = None
+            return
+
+        if self.currentEditingSourceName not in self.currentVolumeNodesByName:
+            self.currentEditingSourceName = next(
+                (
+                    source_name
+                    for source_name in ("T1post", "T1pre")
+                    if source_name in self.currentVolumeNodesByName
+                ),
+                available_source_names[0],
+            )
+
+        self.setEditingSource(self.currentEditingSourceName)
 
     def _trackNode(self, node):
         if node and node.GetID():
@@ -428,6 +560,8 @@ class PediatricGliomaSegmentationBrowserLogic(ScriptedLoadableModuleLogic):
             if node:
                 scene.RemoveNode(node)
         self.loadedNodeIDs = []
+        self.currentSegmentationNode = None
+        self.currentVolumeNodesByName = {}
 
     def _loadVolume(self, image_path: str):
         volume_node = slicer.util.loadVolume(image_path, {"show": False})
@@ -447,7 +581,7 @@ class PediatricGliomaSegmentationBrowserLogic(ScriptedLoadableModuleLogic):
         )
         if segmentation_node:
             segmentation_node.SetName(SEGMENTATION_DISPLAY_NAME)
-            self._renameSegmentsFromLabelMap(segmentation_node)
+            self._prepareSegmentation(segmentation_node)
             return segmentation_node
 
         labelmap_node = slicer.util.loadLabelVolume(segmentation_path, {"show": False})
@@ -468,8 +602,12 @@ class PediatricGliomaSegmentationBrowserLogic(ScriptedLoadableModuleLogic):
         self.loadedNodeIDs = [
             node_id for node_id in self.loadedNodeIDs if node_id != labelmap_node.GetID()
         ]
-        self._renameSegmentsFromLabelMap(segmentation_node)
+        self._prepareSegmentation(segmentation_node)
         return segmentation_node
+
+    def _prepareSegmentation(self, segmentation_node):
+        self._renameSegmentsFromLabelMap(segmentation_node)
+        self._ensureExpectedSegmentsExist(segmentation_node)
 
     def _renameSegmentsFromLabelMap(self, segmentation_node):
         segmentation = segmentation_node.GetSegmentation()
@@ -483,6 +621,27 @@ class PediatricGliomaSegmentationBrowserLogic(ScriptedLoadableModuleLogic):
             if label_value in SEGMENT_LABEL_NAMES:
                 segment.SetName(SEGMENT_LABEL_NAMES[label_value])
 
+    def _ensureExpectedSegmentsExist(self, segmentation_node):
+        segmentation = segmentation_node.GetSegmentation()
+        segment_ids = vtk.vtkStringArray()
+        segmentation.GetSegmentIDs(segment_ids)
+
+        existing_label_values = set()
+        for segment_index in range(segment_ids.GetNumberOfValues()):
+            segment = segmentation.GetSegment(segment_ids.GetValue(segment_index))
+            if not segment:
+                continue
+            existing_label_values.add(segment.GetLabelValue())
+
+        for label_value, segment_name in SEGMENT_LABEL_NAMES.items():
+            if label_value in existing_label_values:
+                continue
+
+            segment_id = segmentation.AddEmptySegment("", segment_name)
+            segment = segmentation.GetSegment(segment_id)
+            if segment:
+                segment.SetLabelValue(label_value)
+
     def _configureSegmentationDisplay(self, segmentation_node):
         display_node = segmentation_node.GetDisplayNode()
         if not display_node:
@@ -491,11 +650,15 @@ class PediatricGliomaSegmentationBrowserLogic(ScriptedLoadableModuleLogic):
 
         display_node.SetVisibility2D(True)
         display_node.SetVisibility3D(True)
+        display_node.SetVisibility2DFill(True)
         display_node.SetOpacity2DFill(0.35)
+        display_node.SetVisibility2DOutline(True)
         display_node.SetOpacity2DOutline(1.0)
 
     def _buildDisplayVolumeNodes(self, volume_nodes, session: SessionRecord):
-        volume_nodes_by_name = {volume_node.GetName(): volume_node for volume_node in volume_nodes}
+        volume_nodes_by_name = {
+            volume_node.GetName(): volume_node for volume_node in volume_nodes
+        }
 
         t1post_node = volume_nodes_by_name.get("T1post")
         t1pre_node = volume_nodes_by_name.get("T1pre")
@@ -522,11 +685,17 @@ class PediatricGliomaSegmentationBrowserLogic(ScriptedLoadableModuleLogic):
             t1pre_node,
             session,
         )
+        if subtraction_node:
+            volume_nodes_by_name[SUBTRACTION_DISPLAY_NAME] = subtraction_node
+
+        self.currentVolumeNodesByName = volume_nodes_by_name
         display_nodes_by_name = {
             "T1post": t1post_node,
             "T1pre": t1pre_node,
             "FLAIR": flair_node,
-            SUBTRACTION_DISPLAY_NAME if subtraction_node else "T2": subtraction_node or t2_node,
+            SUBTRACTION_DISPLAY_NAME if subtraction_node else "T2": (
+                subtraction_node or t2_node
+            ),
         }
 
         return [
@@ -666,11 +835,24 @@ class PediatricGliomaSegmentationBrowserLogic(ScriptedLoadableModuleLogic):
             composite_node.SetHotLinkedControl(True)
             composite_node.SetBackgroundVolumeID(volume_node.GetID())
             composite_node.SetForegroundVolumeID(None)
+            composite_node.SetForegroundOpacity(0.0)
             composite_node.SetLabelVolumeID(None)
 
             slice_node = slice_widget.mrmlSliceNode()
             slice_node.SetOrientationToAxial()
             slice_widget.sliceLogic().FitSliceToAll()
+
+    def _assignForegroundVolumeToViews(self, volume_node, foreground_opacity: float):
+        layout_manager = slicer.app.layoutManager()
+        for view_name in FOUR_SLICE_VIEW_NAMES:
+            slice_widget = layout_manager.sliceWidget(view_name)
+            if not slice_widget:
+                continue
+
+            composite_node = slice_widget.sliceLogic().GetSliceCompositeNode()
+            composite_node.SetDoPropagateVolumeSelection(False)
+            composite_node.SetForegroundVolumeID(volume_node.GetID())
+            composite_node.SetForegroundOpacity(foreground_opacity)
 
     def _activateWindowLevelTool(self):
         interaction_node = slicer.app.applicationLogic().GetInteractionNode()
@@ -678,30 +860,25 @@ class PediatricGliomaSegmentationBrowserLogic(ScriptedLoadableModuleLogic):
             slicer.vtkMRMLInteractionNode.AdjustWindowLevel
         )
 
-    def _selectSegmentationForEditing(self, segmentation_node, volume_nodes):
+    def _segmentEditorWidget(self):
         if not hasattr(slicer.modules, "segmenteditor"):
-            return
+            return None
 
         segment_editor_module = slicer.modules.segmenteditor
         widget_representation = segment_editor_module.widgetRepresentation()
         if not widget_representation:
+            return None
+
+        return widget_representation.self().editor
+
+    def _setSegmentEditorSourceVolume(self, segmentation_node, source_volume_node):
+        editor_widget = self._segmentEditorWidget()
+        if not editor_widget:
             return
 
-        editor_widget = widget_representation.self().editor
         if hasattr(editor_widget, "setAutoShowSourceVolumeNode"):
             editor_widget.setAutoShowSourceVolumeNode(False)
         elif hasattr(editor_widget, "setAutoShowMasterVolumeNode"):
             editor_widget.setAutoShowMasterVolumeNode(False)
         editor_widget.setSegmentationNode(segmentation_node)
-        if volume_nodes:
-            editor_widget.setSourceVolumeNode(
-                volume_nodes[_preferred_edit_volume_index(volume_nodes)]
-            )
-
-
-def _preferred_edit_volume_index(volume_nodes) -> int:
-    for preferred_modality in ("T1post", "T1pre"):
-        for index, volume_node in enumerate(volume_nodes):
-            if preferred_modality in volume_node.GetName():
-                return index
-    return 0
+        editor_widget.setSourceVolumeNode(source_volume_node)

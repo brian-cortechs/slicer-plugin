@@ -29,6 +29,10 @@ The module is currently hard-coded to these dataset roots:
 - If `T1post` and `T1pre` do not have matching shape and geometry, shows an
   alert and falls back to displaying `T2` instead of the subtraction image.
 - Links the slice views so pan, zoom, and slice scrolling stay synchronized.
+- Lets you choose an explicit `Editing source` volume for Segment Editor tools.
+- Shows the chosen editing source as a foreground overlay in all four slice
+  views so threshold-based editing is consistent while all backgrounds remain
+  visible.
 - Names the loaded segmentation node `glioma segmentation`.
 - Renames loaded image nodes to cleaner modality labels: `T1post`, `T1pre`,
   `FLAIR`, and `T2`.
@@ -45,8 +49,12 @@ The module is currently hard-coded to these dataset roots:
 4. Restart Slicer or click `Reload and Test`.
 5. Open the `Pediatric Glioma Segmentation Browser` module.
 6. Pick a session from the dropdown or use `Previous` / `Next`.
+7. Choose an `Editing source` if you want Segment Editor tools such as
+   `Threshold`, or `Paint` with masking, to operate from a specific image.
+8. Adjust `Edit overlay` opacity if you want the editing source to be more or
+   less visible across all views.
 
-The windowing tool will be automatically selected. **If you want to change one of the images, remember to unlink the views first**, otherwise you'll change to the newly selected image in all four views.
+The windowing tool will be automatically selected after each case load.
 
 ## Reload during development
 
