@@ -24,6 +24,8 @@ EDITING_SOURCE_NAMES = [
     SUBTRACTION_DISPLAY_NAME,
     "T2",
 ]
+TOGGLE_SEGMENT_VISIBILITY_SHORTCUT = "Shift+V"
+MANAGED_NODE_ATTRIBUTE = "PediatricGliomaSegmentationBrowser.ManagedNode"
 MODALITY_RULES = [
     ("ce-gadolinium_T1w", "T1post"),
     ("_T1w", "T1pre"),
@@ -253,6 +255,7 @@ class PediatricGliomaSegmentationBrowserWidget(
         ScriptedLoadableModuleWidget.__init__(self, parent)
         VTKObservationMixin.__init__(self)
         self.logic = None
+        self.visibilityShortcut = None
         self.refreshButton = None
         self.editingSourceSelector = None
         self.foregroundOpacitySlider = None
@@ -265,6 +268,7 @@ class PediatricGliomaSegmentationBrowserWidget(
             raise RuntimeError("This module must be run inside 3D Slicer.")
 
         super().setup()
+        PediatricGliomaSegmentationBrowserLogic.removeManagedNodesFromScene()
         self.logic = PediatricGliomaSegmentationBrowserLogic()
 
         collapsibleButton = ctk.ctkCollapsibleButton()
@@ -349,8 +353,51 @@ class PediatricGliomaSegmentationBrowserWidget(
         )
         self.sessionSelector.connect("currentIndexChanged(int)", self.onSessionSelected)
 
+        self.installVisibilityShortcut()
         self.updateEditingControls()
         self.refreshSessions()
+
+    def cleanup(self):
+        if self.logic:
+            self.logic.removeManagedNodesFromScene()
+        self.removeVisibilityShortcut()
+
+    def installVisibilityShortcut(self):
+        main_window = slicer.util.mainWindow()
+        if not main_window:
+            return
+
+        for shortcut in main_window.findChildren(qt.QShortcut):
+            if shortcut.objectName == (
+                "PediatricGliomaSegmentationBrowserToggleSegmentsShortcut"
+            ):
+                shortcut.setParent(None)
+                shortcut.deleteLater()
+
+        self.visibilityShortcut = qt.QShortcut(main_window)
+        self.visibilityShortcut.objectName = (
+            "PediatricGliomaSegmentationBrowserToggleSegmentsShortcut"
+        )
+        self.visibilityShortcut.setKey(qt.QKeySequence(
+            TOGGLE_SEGMENT_VISIBILITY_SHORTCUT
+        ))
+        self.visibilityShortcut.setContext(qt.Qt.ApplicationShortcut)
+        self.visibilityShortcut.connect("activated()", self.toggleSegmentationVisibility)
+
+    def removeVisibilityShortcut(self):
+        if self.visibilityShortcut:
+            self.visibilityShortcut.setParent(None)
+            self.visibilityShortcut.deleteLater()
+            self.visibilityShortcut = None
+
+    def toggleSegmentationVisibility(self):
+        visible = self.logic.toggleSegmentationVisibility()
+        if visible is None:
+            return
+        self.statusLabel.text = (
+            f"Segmentation visibility {'on' if visible else 'off'} "
+            f"({TOGGLE_SEGMENT_VISIBILITY_SHORTCUT})."
+        )
 
     def refreshSessions(self):
         previous_key = None
@@ -463,6 +510,24 @@ class PediatricGliomaSegmentationBrowserWidget(
 
 
 class PediatricGliomaSegmentationBrowserLogic(ScriptedLoadableModuleLogic):
+    @staticmethod
+    def removeManagedNodesFromScene():
+        if not SLICER_AVAILABLE:
+            return
+
+        scene = slicer.mrmlScene
+        nodes_to_remove = []
+        scene_nodes = scene.GetNodes()
+        scene_nodes.InitTraversal()
+        node = scene_nodes.GetNextItemAsObject()
+        while node:
+            if node.GetAttribute(MANAGED_NODE_ATTRIBUTE) == "1":
+                nodes_to_remove.append(node)
+            node = scene_nodes.GetNextItemAsObject()
+
+        for node in reversed(nodes_to_remove):
+            scene.RemoveNode(node)
+
     def __init__(self):
         super().__init__()
         self.sessions: List[SessionRecord] = []
@@ -480,6 +545,18 @@ class PediatricGliomaSegmentationBrowserLogic(ScriptedLoadableModuleLogic):
         return _available_editing_source_names(
             list(self.currentVolumeNodesByName.keys())
         )
+
+    def toggleSegmentationVisibility(self):
+        if not self.currentSegmentationNode:
+            return None
+
+        display_node = self.currentSegmentationNode.GetDisplayNode()
+        if not display_node:
+            return None
+
+        visible = not bool(display_node.GetVisibility())
+        display_node.SetVisibility(visible)
+        return visible
 
     def loadSession(self, session: SessionRecord):
         if not SLICER_AVAILABLE:
@@ -551,6 +628,7 @@ class PediatricGliomaSegmentationBrowserLogic(ScriptedLoadableModuleLogic):
 
     def _trackNode(self, node):
         if node and node.GetID():
+            node.SetAttribute(MANAGED_NODE_ATTRIBUTE, "1")
             self.loadedNodeIDs.append(node.GetID())
 
     def _removePreviouslyLoadedNodes(self):

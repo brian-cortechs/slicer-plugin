@@ -179,6 +179,30 @@ class DiscoverSessionsTest(unittest.TestCase):
             ["T1post", "FLAIR", "T1 subtraction", "T2"],
         )
 
+    def test_toggle_segmentation_visibility(self):
+        class FakeDisplayNode:
+            def __init__(self):
+                self.visible = True
+
+            def GetVisibility(self):
+                return self.visible
+
+            def SetVisibility(self, visible):
+                self.visible = bool(visible)
+
+        class FakeSegmentationNode:
+            def __init__(self):
+                self.display_node = FakeDisplayNode()
+
+            def GetDisplayNode(self):
+                return self.display_node
+
+        logic = self.module.PediatricGliomaSegmentationBrowserLogic()
+        logic.currentSegmentationNode = FakeSegmentationNode()
+
+        self.assertFalse(logic.toggleSegmentationVisibility())
+        self.assertTrue(logic.toggleSegmentationVisibility())
+
 
 if __name__ == "__main__":
     unittest.main()

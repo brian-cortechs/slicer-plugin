@@ -33,6 +33,8 @@ The module is currently hard-coded to these dataset roots:
 - Shows the chosen editing source as a foreground overlay in all four slice
   views so threshold-based editing is consistent while all backgrounds remain
   visible.
+- Adds a global `Shift+V` shortcut to toggle the current segmentation
+  visibility while editing.
 - Names the loaded segmentation node `glioma segmentation`.
 - Renames loaded image nodes to cleaner modality labels: `T1post`, `T1pre`,
   `FLAIR`, and `T2`.
@@ -53,6 +55,7 @@ The module is currently hard-coded to these dataset roots:
    `Threshold`, or `Paint` with masking, to operate from a specific image.
 8. Adjust `Edit overlay` opacity if you want the editing source to be more or
    less visible across all views.
+9. Press `Shift+V` at any time to toggle all loaded segments on or off.
 
 The windowing tool will be automatically selected after each case load.
 
