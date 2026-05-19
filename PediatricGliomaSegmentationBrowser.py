@@ -1,11 +1,11 @@
 REPO_ROOT = "/Users/brian/repos/pediatric-glioma-segmentation"
-IMAGES_PATH = "data/datasets/derivatives/preprocessed/images"
+IMAGES_PATH = "data/datasets/derivatives/preprocessed/raw"
 SEGMENTATIONS_PATH = "data/datasets/derivatives/ground-truth-segs"
 YOUR_INITIALS = "BK"  # select CSV rows for this assignee
 PARTICIPANTS_CSV_PATH = (
     "/Users/brian/repos/slicer-plugin/pediatric-glioma-participants.csv"
 )
-OUTPUT_SEG_FOLDER = "/Users/brian/Desktop/improved-peds-segs"
+OUTPUT_SEG_FOLDER = "/Users/brian/Desktop/onq-2896"
 
 SEGMENT_LABEL_NAMES = {
     1: "enhancing tissue",
@@ -33,6 +33,8 @@ DISPLAYED_VIEW_VOLUME_NAMES = [
 ]
 TOGGLE_SEGMENT_VISIBILITY_SHORTCUT = "Shift+V"
 MANAGED_NODE_ATTRIBUTE = "PediatricGliomaSegmentationBrowser.ManagedNode"
+UNDO_SHORTCUT_OBJECT_NAME = "PediatricGliomaSegmentationBrowserUndoShortcut"
+REDO_SHORTCUT_OBJECT_NAME = "PediatricGliomaSegmentationBrowserRedoShortcut"
 MODALITY_RULES = [
     ("ce-gadolinium_T1w", "T1post"),
     ("_T1w", "T1pre"),
@@ -308,6 +310,8 @@ class PediatricGliomaSegmentationBrowserWidget(
         self.segmentEditorWidget = None
         self.segmentEditorNode = None
         self.visibilityShortcut = None
+        self.undoShortcut = None
+        self.redoShortcut = None
         self.refreshButton = None
         self.exportButton = None
         self.editingSourceSelector = None
@@ -441,6 +445,7 @@ class PediatricGliomaSegmentationBrowserWidget(
         self.sessionSelector.connect("currentIndexChanged(int)", self.onSessionSelected)
 
         self.installVisibilityShortcut()
+        self.installUndoRedoShortcuts()
         self.updateEditingControls()
         self.refreshSessions()
 
@@ -452,6 +457,7 @@ class PediatricGliomaSegmentationBrowserWidget(
         if self.logic:
             self.logic.removeManagedNodesFromScene()
         self.removeVisibilityShortcut()
+        self.removeUndoRedoShortcuts()
 
     def segmentEditorParameterNode(self):
         if self.segmentEditorNode:
@@ -492,6 +498,41 @@ class PediatricGliomaSegmentationBrowserWidget(
             self.visibilityShortcut.deleteLater()
             self.visibilityShortcut = None
 
+    def installUndoRedoShortcuts(self):
+        main_window = slicer.util.mainWindow()
+        if not main_window:
+            return
+
+        for shortcut in main_window.findChildren(qt.QShortcut):
+            if shortcut.objectName in (
+                UNDO_SHORTCUT_OBJECT_NAME,
+                REDO_SHORTCUT_OBJECT_NAME,
+            ):
+                shortcut.setParent(None)
+                shortcut.deleteLater()
+
+        self.undoShortcut = qt.QShortcut(main_window)
+        self.undoShortcut.objectName = UNDO_SHORTCUT_OBJECT_NAME
+        self.undoShortcut.setKey(qt.QKeySequence(qt.QKeySequence.Undo))
+        self.undoShortcut.setContext(qt.Qt.ApplicationShortcut)
+        self.undoShortcut.connect("activated()", self.undoSegmentationEdit)
+
+        self.redoShortcut = qt.QShortcut(main_window)
+        self.redoShortcut.objectName = REDO_SHORTCUT_OBJECT_NAME
+        self.redoShortcut.setKey(qt.QKeySequence(qt.QKeySequence.Redo))
+        self.redoShortcut.setContext(qt.Qt.ApplicationShortcut)
+        self.redoShortcut.connect("activated()", self.redoSegmentationEdit)
+
+    def removeUndoRedoShortcuts(self):
+        if self.undoShortcut:
+            self.undoShortcut.setParent(None)
+            self.undoShortcut.deleteLater()
+            self.undoShortcut = None
+        if self.redoShortcut:
+            self.redoShortcut.setParent(None)
+            self.redoShortcut.deleteLater()
+            self.redoShortcut = None
+
     def toggleSegmentationVisibility(self):
         visible = self.logic.toggleSegmentationVisibility()
         if visible is None:
@@ -500,6 +541,18 @@ class PediatricGliomaSegmentationBrowserWidget(
             f"Segmentation visibility {'on' if visible else 'off'} "
             f"({TOGGLE_SEGMENT_VISIBILITY_SHORTCUT})."
         )
+
+    def undoSegmentationEdit(self):
+        if not self.segmentEditorWidget:
+            return
+        self.segmentEditorWidget.undo()
+        self.statusLabel.text = "Undid segmentation edit."
+
+    def redoSegmentationEdit(self):
+        if not self.segmentEditorWidget:
+            return
+        self.segmentEditorWidget.redo()
+        self.statusLabel.text = "Redid segmentation edit."
 
     def refreshSessions(self):
         previous_key = None
