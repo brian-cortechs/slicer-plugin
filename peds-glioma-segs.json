@@ -1,0 +1,98 @@
+{
+  "image_folders": "/Users/brian/repos/pediatric-glioma-segmentation/data/datasets/derivatives/preprocessed/raw/*",
+  "image_subfolder": "ses-???/anat",
+  "images": [
+    {
+      "display_name": "T1post",
+      "filename_regex": "^sub-[^_]+_ses-[^_]+_ce-gadolinium_T1w\\.nii\\.gz$",
+      "display": true
+    },
+    {
+      "display_name": "T1pre",
+      "filename_regex": "^sub-[^_]+_ses-[^_]+_T1w\\.nii\\.gz$",
+      "display": true
+    },
+    {
+      "display_name": "FLAIR",
+      "filename_regex": "^sub-[^_]+_ses-[^_]+_FLAIR\\.nii\\.gz$",
+      "display": true
+    },
+    {
+      "display_name": "T2",
+      "filename_regex": "^sub-[^_]+_ses-[^_]+_T2w?\\.nii\\.gz$",
+      "display": true
+    }
+  ],
+  "segmentations": [
+    {
+      "segmentation_folders": "/Users/brian/repos/pediatric-glioma-segmentation/data/datasets/derivatives/ground-truth-segs-dev/*",
+      "segmentation_subfolder": "ses-???/anat",
+      "display_name": "dev seg",
+      "filename_regex": "^sub-[^_]+_ses-[^_]+_space-orig_dseg\\.nii\\.gz$",
+      "visible": true,
+      "display_type": "fill",
+      "segments": [
+        {
+          "label": 1,
+          "name": "enhancing tissue",
+          "color": [255, 0, 0],
+          "visible": true
+        },
+        {
+          "label": 2,
+          "name": "non-enhancing tumor core",
+          "color": [0, 255, 0],
+          "visible": true
+        },
+        {
+          "label": 3,
+          "name": "cystic component",
+          "color": [0, 0, 255],
+          "visible": true
+        },
+        {
+          "label": 4,
+          "name": "peritumoral edema",
+          "color": [255, 255, 0],
+          "visible": true
+        }
+      ]
+    },
+
+    {
+      "segmentation_folders": "/Users/brian/repos/pediatric-glioma-segmentation/data/datasets/derivatives/ground-truth-segs-updated/*",
+      "segmentation_subfolder": "ses-???/anat",
+      "display_name": "onq-2896 seg",
+      "filename_regex": "^sub-[^_]+_ses-[^_]+_space-orig_dseg\\.nii\\.gz$",
+      "visible": false,
+      "display_type": "fill",
+      "segments": [
+        {
+          "label": 1,
+          "name": "enhancing tissue",
+          "color": [255, 0, 0],
+          "visible": true
+        },
+        {
+          "label": 2,
+          "name": "non-enhancing tumor core",
+          "color": [0, 255, 0],
+          "visible": true
+        },
+        {
+          "label": 3,
+          "name": "cystic component",
+          "color": [0, 0, 255],
+          "visible": true
+        },
+        {
+          "label": 4,
+          "name": "peritumoral edema",
+          "color": [255, 255, 0],
+          "visible": true
+        }
+      ]
+    }
+
+  ]
+}

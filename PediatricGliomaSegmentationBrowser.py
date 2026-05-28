@@ -1,60 +1,405 @@
-REPO_ROOT = "/Users/brian/repos/pediatric-glioma-segmentation"
-IMAGES_PATH = "data/datasets/derivatives/preprocessed/raw"
-SEGMENTATIONS_PATH = "data/datasets/derivatives/ground-truth-segs"
-YOUR_INITIALS = "BK"  # select CSV rows for this assignee
-PARTICIPANTS_CSV_PATH = (
-    "/Users/brian/repos/slicer-plugin/pediatric-glioma-participants.csv"
-)
-OUTPUT_SEG_FOLDER = "/Users/brian/Desktop/onq-2896"
-
-SEGMENT_LABEL_NAMES = {
-    1: "enhancing tissue",
-    2: "non-enhancing tumor core",
-    3: "cystic component",
-    4: "peritumoral edema"
-}
-
-SEGMENTATION_DISPLAY_NAME = "glioma segmentation"
-SUBTRACTION_DISPLAY_NAME = "T1 subtraction"
-CUSTOM_LAYOUT_ID = 1401
-FOUR_SLICE_VIEW_NAMES = ["Red", "Yellow", "Green", "Compare1"]
-EDITING_SOURCE_NAMES = [
-    "T1post",
-    "T1pre",
-    "FLAIR",
-    SUBTRACTION_DISPLAY_NAME,
-    "T2",
-]
-DISPLAYED_VIEW_VOLUME_NAMES = [
-    "T1post",
-    "T1pre",
-    "T2",
-    SUBTRACTION_DISPLAY_NAME,
-]
-TOGGLE_SEGMENT_VISIBILITY_SHORTCUT = "Shift+V"
-MANAGED_NODE_ATTRIBUTE = "PediatricGliomaSegmentationBrowser.ManagedNode"
-UNDO_SHORTCUT_OBJECT_NAME = "PediatricGliomaSegmentationBrowserUndoShortcut"
-REDO_SHORTCUT_OBJECT_NAME = "PediatricGliomaSegmentationBrowserRedoShortcut"
-MODALITY_RULES = [
-    ("ce-gadolinium_T1w", "T1post"),
-    ("_T1w", "T1pre"),
-    ("_T2w", "T2"),
-    ("_T2", "T2"),
-    ("_FLAIR", "FLAIR"),
-]
-
-import csv
+import fnmatch
+import glob
+import json
 import os
-from dataclasses import dataclass
-from typing import List
+import re
+from dataclasses import dataclass, field
+from typing import Dict, List, Optional
 
-IMAGES_ROOT = os.path.join(REPO_ROOT, IMAGES_PATH)
-SEGMENTATIONS_ROOT = os.path.join(REPO_ROOT, SEGMENTATIONS_PATH)
+
+default_config_path = os.path.join(
+    os.path.dirname(__file__),
+    "peds-glioma-segs.json",
+)
+if not os.path.isfile(default_config_path):
+    default_config_path = None
+
+loaded_config_path = default_config_path or ""
+loaded_config = None
+managed_node_attribute = "PediatricGliomaSegmentationBrowser.ManagedNode"
+custom_layout_id = 1401
+four_slice_view_names = ["Red", "Yellow", "Green", "Compare1"]
+toggle_segmentation_visibility_shortcut = "Shift+V"
+previous_segmentation_shortcut = "["
+next_segmentation_shortcut = "]"
+config_file_filter = "JSON files (*.json)"
+bids_subject_session_pattern = re.compile(r"(sub-[^_]+)_(ses-[^_]+)")
+
+
+@dataclass(frozen=True)
+class ImageDefinition:
+    display_name: str
+    pattern: str
+    pattern_type: str
+    display: bool = True
+
+
+@dataclass(frozen=True)
+class SegmentDefinition:
+    label: int
+    name: str
+    color: Optional[List[float]] = None
+    visible: bool = True
+
+
+@dataclass(frozen=True)
+class SessionSegmentation:
+    display_name: str
+    path: str
+    visible: bool
+    display_type: str
+    segments: List[SegmentDefinition] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
+class SegmentationDefinition:
+    folders_glob: str
+    subfolder_glob: str
+    display_name: str
+    pattern: str
+    pattern_type: str
+    visible: bool
+    display_type: str
+    segments: List[SegmentDefinition] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
+class SessionRecord:
+    subject_id: str
+    session_id: str
+    image_paths_by_name: Dict[str, str]
+    display_image_names: List[str]
+    segmentations: List[SessionSegmentation] = field(default_factory=list)
+
+    @property
+    def session_key(self) -> str:
+        return f"{self.subject_id}/{self.session_id}"
+
+    @property
+    def display_name(self) -> str:
+        return f"{self.subject_id} | {self.session_id}"
+
+
+def _normalize_color(color_value):
+    if color_value is None:
+        return None
+    if not isinstance(color_value, list) or len(color_value) != 3:
+        raise RuntimeError("Segment colors must be RGB lists with 3 values.")
+    if any(component > 1.0 for component in color_value):
+        return [float(component) / 255.0 for component in color_value]
+    return [float(component) for component in color_value]
+
+
+def _normalize_pattern(config_entry: dict, context: str) -> tuple:
+    regex_pattern = config_entry.get("filename_regex")
+    glob_pattern = config_entry.get("filename")
+    if regex_pattern and glob_pattern:
+        raise RuntimeError(
+            f"{context} should define only one of 'filename_regex' or 'filename'."
+        )
+    if regex_pattern:
+        re.compile(regex_pattern)
+        return regex_pattern, "regex"
+    if glob_pattern:
+        return glob_pattern, "glob"
+    raise RuntimeError(
+        f"{context} is missing a filename rule. Use 'filename_regex' or 'filename'."
+    )
+
+
+def _normalize_image_section(config_values: dict) -> dict:
+    if isinstance(config_values.get("images"), dict):
+        image_section = config_values["images"]
+        image_folders = image_section.get("folders")
+        image_subfolder = image_section.get("subfolder", "")
+        image_items = image_section.get("items", [])
+    else:
+        image_folders = config_values.get("image_folders")
+        image_subfolder = config_values.get("image_subfolder", "")
+        image_items = config_values.get("images", [])
+
+    if not image_folders:
+        raise RuntimeError("Config is missing image folder settings.")
+    if not image_items:
+        raise RuntimeError("Config must define at least one image rule.")
+
+    image_definitions = []
+    for index, image_item in enumerate(image_items):
+        pattern, pattern_type = _normalize_pattern(image_item, f"images[{index}]")
+        image_definitions.append(
+            ImageDefinition(
+                display_name=image_item["display_name"],
+                pattern=pattern,
+                pattern_type=pattern_type,
+                display=bool(image_item.get("display", True)),
+            )
+        )
+
+    displayed_image_names = [
+        image_definition.display_name
+        for image_definition in image_definitions
+        if image_definition.display
+    ]
+    if not displayed_image_names:
+        raise RuntimeError("At least one image must have display=true.")
+    if len(displayed_image_names) > len(four_slice_view_names):
+        raise RuntimeError(
+            "This browser layout supports at most "
+            f"{len(four_slice_view_names)} displayed images."
+        )
+
+    return {
+        "folders_glob": image_folders,
+        "subfolder_glob": image_subfolder,
+        "definitions": image_definitions,
+        "displayed_names": displayed_image_names,
+    }
+
+
+def _normalize_segment_definitions(config_values: dict) -> List[SegmentationDefinition]:
+    segmentations_config = config_values.get("segmentations", [])
+    if isinstance(segmentations_config, dict):
+        segmentations_config = [segmentations_config]
+
+    segmentation_definitions = []
+    for index, segmentation_item in enumerate(segmentations_config):
+        pattern, pattern_type = _normalize_pattern(
+            segmentation_item,
+            f"segmentations[{index}]",
+        )
+        segment_definitions = []
+        for segment_index, segment_item in enumerate(
+            segmentation_item.get("segments", [])
+        ):
+            try:
+                label_value = int(segment_item["label"])
+            except Exception as exc:
+                raise RuntimeError(
+                    f"segmentations[{index}].segments[{segment_index}].label "
+                    "must be an integer."
+                ) from exc
+            segment_definitions.append(
+                SegmentDefinition(
+                    label=label_value,
+                    name=segment_item["name"],
+                    color=_normalize_color(segment_item.get("color")),
+                    visible=bool(segment_item.get("visible", True)),
+                )
+            )
+
+        segmentation_definitions.append(
+            SegmentationDefinition(
+                folders_glob=(
+                    segmentation_item.get("segmentation_folders")
+                    or segmentation_item.get("folders")
+                ),
+                subfolder_glob=(
+                    segmentation_item.get("segmentation_subfolder")
+                    or segmentation_item.get("subfolder", "")
+                ),
+                display_name=segmentation_item["display_name"],
+                pattern=pattern,
+                pattern_type=pattern_type,
+                visible=bool(segmentation_item.get("visible", True)),
+                display_type=(segmentation_item.get("display_type") or "fill").lower(),
+                segments=segment_definitions,
+            )
+        )
+
+    for segmentation_definition in segmentation_definitions:
+        if not segmentation_definition.folders_glob:
+            raise RuntimeError(
+                "Each segmentation entry must define 'segmentation_folders' "
+                "or 'folders'."
+            )
+
+    return segmentation_definitions
+
+
+def _normalize_config_values(config_values: dict) -> dict:
+    image_section = _normalize_image_section(config_values)
+    segmentation_definitions = _normalize_segment_definitions(config_values)
+    return {
+        "images": image_section,
+        "segmentations": segmentation_definitions,
+    }
+
+
+def _load_config_values(config_path: str):
+    global loaded_config
+    global loaded_config_path
+
+    with open(config_path, encoding="utf-8") as config_file:
+        config_values = json.load(config_file)
+
+    loaded_config = _normalize_config_values(config_values)
+    loaded_config_path = config_path
+    return loaded_config
+
+
+def _match_filename_rule(basename: str, pattern: str, pattern_type: str) -> bool:
+    if pattern_type == "regex":
+        return re.fullmatch(pattern, basename) is not None
+    return fnmatch.fnmatch(basename, pattern)
+
+
+def _bids_subject_session_from_path(file_path: str):
+    match = bids_subject_session_pattern.search(os.path.basename(file_path))
+    if not match:
+        return None
+    return match.group(1), match.group(2)
+
+
+def _compact_path(path: str, keep_parts: int = 3) -> str:
+    if not path:
+        return "(not configured)"
+    path_parts = [part for part in path.split(os.sep) if part]
+    if len(path_parts) <= keep_parts:
+        return path
+    return os.sep.join(["...", *path_parts[-keep_parts:]])
+
+
+def _iter_search_directories(folders_glob: str, subfolder_glob: str = "") -> List[str]:
+    search_directories = []
+    for matched_root in sorted(glob.glob(folders_glob)):
+        if not os.path.isdir(matched_root):
+            continue
+        if subfolder_glob:
+            for matched_directory in sorted(
+                glob.glob(os.path.join(matched_root, subfolder_glob))
+            ):
+                if os.path.isdir(matched_directory):
+                    search_directories.append(matched_directory)
+        else:
+            search_directories.append(matched_root)
+    return search_directories
+
+
+def _list_nifti_files(folders_glob: str, subfolder_glob: str = "") -> List[str]:
+    nifti_files = []
+    for search_directory in _iter_search_directories(folders_glob, subfolder_glob):
+        for root, _, files in os.walk(search_directory):
+            for filename in sorted(files):
+                if filename.endswith(".nii") or filename.endswith(".nii.gz"):
+                    nifti_files.append(os.path.join(root, filename))
+    return nifti_files
+
+
+def _collect_image_matches(config: dict) -> Dict[tuple, Dict[str, List[str]]]:
+    matches_by_session = {}
+    image_files = _list_nifti_files(
+        config["images"]["folders_glob"],
+        config["images"]["subfolder_glob"],
+    )
+    for image_file in image_files:
+        session_key = _bids_subject_session_from_path(image_file)
+        if not session_key:
+            continue
+        basename = os.path.basename(image_file)
+        for image_definition in config["images"]["definitions"]:
+            if _match_filename_rule(
+                basename,
+                image_definition.pattern,
+                image_definition.pattern_type,
+            ):
+                matches_by_session.setdefault(session_key, {}).setdefault(
+                    image_definition.display_name,
+                    [],
+                ).append(image_file)
+    return matches_by_session
+
+
+def _collect_segmentation_matches(
+    segmentation_definitions: List[SegmentationDefinition],
+) -> List[Dict[tuple, List[str]]]:
+    all_matches = []
+    for segmentation_definition in segmentation_definitions:
+        definition_matches = {}
+        for segmentation_path in _list_nifti_files(
+            segmentation_definition.folders_glob,
+            segmentation_definition.subfolder_glob,
+        ):
+            session_key = _bids_subject_session_from_path(segmentation_path)
+            if not session_key:
+                continue
+            if _match_filename_rule(
+                os.path.basename(segmentation_path),
+                segmentation_definition.pattern,
+                segmentation_definition.pattern_type,
+            ):
+                definition_matches.setdefault(session_key, []).append(segmentation_path)
+        all_matches.append(definition_matches)
+    return all_matches
+
+
+def discover_sessions(config=None) -> List[SessionRecord]:
+    active_config = config or loaded_config
+    if not active_config:
+        return []
+
+    image_definitions = active_config["images"]["definitions"]
+    displayed_image_names = active_config["images"]["displayed_names"]
+    image_matches = _collect_image_matches(active_config)
+    segmentation_matches = _collect_segmentation_matches(
+        active_config["segmentations"]
+    )
+
+    sessions = []
+    for session_key in sorted(image_matches.keys()):
+        session_image_matches = image_matches[session_key]
+        image_paths_by_name = {}
+        valid_session = True
+
+        for image_definition in image_definitions:
+            matches = session_image_matches.get(image_definition.display_name, [])
+            if len(matches) != 1:
+                valid_session = False
+                break
+            image_paths_by_name[image_definition.display_name] = matches[0]
+
+        if not valid_session:
+            continue
+
+        segmentation_records = []
+        for segmentation_definition, definition_matches in zip(
+            active_config["segmentations"],
+            segmentation_matches,
+        ):
+            matches = definition_matches.get(session_key, [])
+            if len(matches) != 1:
+                valid_session = False
+                break
+            segmentation_records.append(
+                SessionSegmentation(
+                    display_name=segmentation_definition.display_name,
+                    path=matches[0],
+                    visible=segmentation_definition.visible,
+                    display_type=segmentation_definition.display_type,
+                    segments=segmentation_definition.segments,
+                )
+            )
+
+        if not valid_session:
+            continue
+
+        sessions.append(
+            SessionRecord(
+                subject_id=session_key[0],
+                session_id=session_key[1],
+                image_paths_by_name=image_paths_by_name,
+                display_image_names=list(displayed_image_names),
+                segmentations=segmentation_records,
+            )
+        )
+
+    return sessions
+
+
+if default_config_path:
+    _load_config_values(default_config_path)
 
 try:
     import ctk
-    import numpy as np
-    import qSlicerSegmentationsModuleWidgetsPythonQt
     import qt
     import slicer
     import vtk
@@ -68,8 +413,6 @@ try:
     SLICER_AVAILABLE = True
 except ImportError:
     ctk = None
-    np = None
-    qSlicerSegmentationsModuleWidgetsPythonQt = None
     qt = None
     slicer = None
     vtk = None
@@ -88,214 +431,16 @@ except ImportError:
 
     class VTKObservationMixin:
         pass
-
-
-@dataclass(frozen=True)
-class SessionRecord:
-    subject_id: str
-    session_id: str
-    image_paths: List[str]
-    segmentation_path: str
-
-    @property
-    def session_key(self) -> str:
-        return f"{self.subject_id}/{self.session_id}"
-
-    @property
-    def display_name(self) -> str:
-        return f"{self.subject_id} | {self.session_id}"
-
-
-def _list_subdirectories(path: str, prefix: str) -> List[str]:
-    if not os.path.isdir(path):
-        return []
-
-    return sorted(
-        entry
-        for entry in os.listdir(path)
-        if entry.startswith(prefix) and os.path.isdir(os.path.join(path, entry))
-    )
-
-
-def _list_nifti_files(path: str) -> List[str]:
-    if not os.path.isdir(path):
-        return []
-
-    nii_files = []
-    for entry in sorted(os.listdir(path)):
-        if entry.endswith(".nii") or entry.endswith(".nii.gz"):
-            nii_files.append(os.path.join(path, entry))
-    return nii_files
-
-
-def _modality_sort_key(path: str) -> tuple:
-    basename = os.path.basename(path)
-    for priority, (marker, _) in enumerate(MODALITY_RULES):
-        if marker in basename:
-            return (priority, basename)
-    return (len(MODALITY_RULES), basename)
-
-
-def _display_name_for_image_path(image_path: str) -> str:
-    basename = os.path.basename(image_path)
-    for marker, display_name in MODALITY_RULES:
-        if marker in basename:
-            return display_name
-    return os.path.splitext(os.path.splitext(basename)[0])[0]
-
-
-def _resolved_displayed_volume_names(
-    configured_volume_names: List[str],
-    available_volume_names: List[str],
-) -> List[str]:
-    allowed_volume_names = set(EDITING_SOURCE_NAMES)
-    invalid_volume_names = [
-        volume_name
-        for volume_name in configured_volume_names
-        if volume_name not in allowed_volume_names
-    ]
-    if invalid_volume_names:
-        raise RuntimeError(
-            "DISPLAYED_VIEW_VOLUME_NAMES contains unknown names: "
-            + ", ".join(invalid_volume_names)
-        )
-
-    selected_volume_names = []
-    remaining_volume_names = list(available_volume_names)
-    for volume_name in configured_volume_names:
-        if volume_name in remaining_volume_names:
-            selected_volume_names.append(volume_name)
-            remaining_volume_names.remove(volume_name)
-        elif volume_name == SUBTRACTION_DISPLAY_NAME:
-            selected_volume_names.append(None)
-        else:
-            raise RuntimeError(
-                f"Configured display volume '{volume_name}' is not available."
-            )
-
-    resolved_volume_names = []
-    for volume_name in selected_volume_names:
-        if volume_name is not None:
-            resolved_volume_names.append(volume_name)
-            continue
-        if not remaining_volume_names:
-            raise RuntimeError(
-                "No fallback volume is available for the missing subtraction image."
-            )
-        resolved_volume_names.append(remaining_volume_names.pop(0))
-
-    return resolved_volume_names
-
-
-def _compact_path(path: str, keep_parts: int = 3) -> str:
-    path_parts = [part for part in path.split(os.sep) if part]
-    if len(path_parts) <= keep_parts:
-        return path
-    return os.sep.join(["...", *path_parts[-keep_parts:]])
-
-
-def _output_segmentation_path(output_seg_folder: str, session: SessionRecord) -> str:
-    return os.path.join(
-        output_seg_folder,
-        os.path.basename(session.segmentation_path),
-    )
-
-
-def _available_editing_source_names(volume_names: List[str]) -> List[str]:
-    return [
-        volume_name
-        for volume_name in EDITING_SOURCE_NAMES
-        if volume_name in volume_names
-    ]
-
-
-def _normalize_assignee(value: str) -> str:
-    return (value or "").strip().upper()
-
-
-def _read_assigned_session_keys(
-    participants_csv_path: str,
-    assignee_initials: str,
-) -> List[tuple]:
-    if not os.path.isfile(participants_csv_path):
-        return []
-
-    assigned_session_keys = []
-    seen_session_keys = set()
-    target_assignee = _normalize_assignee(assignee_initials)
-
-    with open(participants_csv_path, newline="", encoding="utf-8-sig") as csv_file:
-        for row in csv.DictReader(csv_file):
-            if _normalize_assignee(row.get("assignee")) != target_assignee:
-                continue
-
-            subject_id = (row.get("participant_id") or "").strip()
-            session_id = (row.get("session_id") or "").strip()
-            if not subject_id or not session_id:
-                continue
-
-            session_key = (subject_id, session_id)
-            if session_key in seen_session_keys:
-                continue
-
-            assigned_session_keys.append(session_key)
-            seen_session_keys.add(session_key)
-
-    return assigned_session_keys
-
-
-def discover_sessions(
-    images_root: str,
-    segmentations_root: str,
-    participants_csv_path: str = PARTICIPANTS_CSV_PATH,
-    assignee_initials: str = YOUR_INITIALS,
-) -> List[SessionRecord]:
-    sessions: List[SessionRecord] = []
-
-    for subject_id, session_id in _read_assigned_session_keys(
-        participants_csv_path,
-        assignee_initials,
-    ):
-        image_anat_dir = os.path.join(images_root, subject_id, session_id, "anat")
-        image_paths = _list_nifti_files(image_anat_dir)
-        if len(image_paths) != 4:
-            continue
-
-        segmentation_anat_dir = os.path.join(
-            segmentations_root,
-            subject_id,
-            session_id,
-            "anat",
-        )
-        segmentation_paths = [
-            path
-            for path in _list_nifti_files(segmentation_anat_dir)
-            if "_dseg" in os.path.basename(path)
-        ]
-        if len(segmentation_paths) != 1:
-            continue
-
-        sessions.append(
-            SessionRecord(
-                subject_id=subject_id,
-                session_id=session_id,
-                image_paths=sorted(image_paths, key=_modality_sort_key),
-                segmentation_path=segmentation_paths[0],
-            )
-        )
-
-    return sessions
-
 class PediatricGliomaSegmentationBrowser(ScriptedLoadableModule):
     def __init__(self, parent):
         super().__init__(parent)
-        self.parent.title = "Pediatric Glioma Segmentation Browser"
+        self.parent.title = "Segmentation Browser"
         self.parent.categories = ["Segmentation"]
         self.parent.dependencies = []
         self.parent.contributors = ["Cursor"]
         self.parent.helpText = (
-            "Browse preprocessed pediatric glioma sessions, load four modalities, "
-            "and load the corresponding segmentation for rapid review/editing."
+            "Browse preprocessed pediatric glioma sessions, load the configured "
+            "image set, and overlay the matching segmentation for review."
         )
         self.parent.acknowledgementText = ""
 
@@ -307,15 +452,13 @@ class PediatricGliomaSegmentationBrowserWidget(
         ScriptedLoadableModuleWidget.__init__(self, parent)
         VTKObservationMixin.__init__(self)
         self.logic = None
-        self.segmentEditorWidget = None
-        self.segmentEditorNode = None
         self.visibilityShortcut = None
-        self.undoShortcut = None
-        self.redoShortcut = None
+        self.previousSegmentationShortcut = None
+        self.nextSegmentationShortcut = None
+        self.loadConfigButton = None
         self.refreshButton = None
-        self.exportButton = None
-        self.editingSourceSelector = None
-        self.foregroundOpacitySlider = None
+        self.previousButton = None
+        self.nextButton = None
         self.sessionSelector = None
         self.statusLabel = None
         self.pathsLabel = None
@@ -334,40 +477,23 @@ class PediatricGliomaSegmentationBrowserWidget(
 
         formLayout = qt.QFormLayout(collapsibleButton)
 
-        self.pathsLabel = qt.QLabel(
-            "Images: "
-            f"{_compact_path(IMAGES_ROOT)}\n"
-            "Segmentations: "
-            f"{_compact_path(SEGMENTATIONS_ROOT)}\n"
-            "Participants CSV: "
-            f"{os.path.basename(PARTICIPANTS_CSV_PATH)}\n"
-            "Output folder: "
-            f"{_compact_path(OUTPUT_SEG_FOLDER)}\n"
-            f"Assignee initials: {YOUR_INITIALS}"
-        )
+        self.pathsLabel = qt.QLabel("")
         self.pathsLabel.wordWrap = True
         self.pathsLabel.maximumWidth = 320
-        self.pathsLabel.toolTip = (
-            f"Images: {IMAGES_ROOT}\n"
-            f"Segmentations: {SEGMENTATIONS_ROOT}\n"
-            f"Participants CSV: {PARTICIPANTS_CSV_PATH}\n"
-            f"Output folder: {OUTPUT_SEG_FOLDER}\n"
-            f"Assignee initials: {YOUR_INITIALS}"
-        )
         formLayout.addRow("Dataset roots", self.pathsLabel)
+
+        self.loadConfigButton = qt.QPushButton("Load config JSON")
+        self.loadConfigButton.toolTip = (
+            "Select a JSON configuration file and reload this module's paths "
+            "and settings from it."
+        )
+        formLayout.addRow(self.loadConfigButton)
 
         self.refreshButton = qt.QPushButton("Refresh sessions")
         self.refreshButton.toolTip = (
-            "Rescan the hard-coded dataset roots and rebuild the session list."
+            "Rescan the configured image and segmentation sources."
         )
         formLayout.addRow(self.refreshButton)
-
-        self.exportButton = qt.QPushButton("Export segmentation")
-        self.exportButton.toolTip = (
-            "Write the current segmentation to OUTPUT_SEG_FOLDER using the "
-            "original input segmentation filename."
-        )
-        formLayout.addRow(self.exportButton)
 
         self.sessionSelector = qt.QComboBox()
         self.sessionSelector.toolTip = (
@@ -375,24 +501,6 @@ class PediatricGliomaSegmentationBrowserWidget(
             "loads the new session."
         )
         formLayout.addRow("Session", self.sessionSelector)
-
-        self.editingSourceSelector = qt.QComboBox()
-        self.editingSourceSelector.toolTip = (
-            "Source volume used for Segment Editor tools such as Threshold, and "
-            "also shown as a foreground overlay in all four slice views."
-        )
-        formLayout.addRow("Editing source", self.editingSourceSelector)
-
-        self.foregroundOpacitySlider = ctk.ctkSliderWidget()
-        self.foregroundOpacitySlider.minimum = 0.0
-        self.foregroundOpacitySlider.maximum = 1.0
-        self.foregroundOpacitySlider.singleStep = 0.05
-        self.foregroundOpacitySlider.value = 0
-        self.foregroundOpacitySlider.decimals = 2
-        self.foregroundOpacitySlider.toolTip = (
-            "Opacity of the editing source foreground overlay shown in all views."
-        )
-        formLayout.addRow("Edit overlay", self.foregroundOpacitySlider)
 
         navigationLayout = qt.QHBoxLayout()
         self.previousButton = qt.QPushButton("Previous")
@@ -407,68 +515,99 @@ class PediatricGliomaSegmentationBrowserWidget(
         self.statusLabel.wordWrap = True
         formLayout.addRow("Status", self.statusLabel)
 
-        segmentEditorCollapsibleButton = ctk.ctkCollapsibleButton()
-        segmentEditorCollapsibleButton.text = "Segment Editor"
-        self.layout.addWidget(segmentEditorCollapsibleButton)
-
-        segmentEditorLayout = qt.QVBoxLayout(segmentEditorCollapsibleButton)
-        self.segmentEditorWidget = (
-            qSlicerSegmentationsModuleWidgetsPythonQt.qMRMLSegmentEditorWidget()
-        )
-        self.segmentEditorWidget.setMaximumNumberOfUndoStates(10)
-        self.segmentEditorWidget.setSegmentationNodeSelectorVisible(False)
-        self.segmentEditorWidget.setSourceVolumeNodeSelectorVisible(False)
-        self.segmentEditorWidget.setSwitchToSegmentationsButtonVisible(False)
-        self.segmentEditorWidget.setMRMLSegmentEditorNode(
-            self.segmentEditorParameterNode()
-        )
-        self.segmentEditorWidget.setMRMLScene(slicer.mrmlScene)
-        segmentEditorLayout.addWidget(self.segmentEditorWidget)
-
-        self.logic.setSegmentEditorWidget(
-            self.segmentEditorWidget,
-            self.segmentEditorNode,
-        )
-
         self.layout.addStretch(1)
 
+        self.loadConfigButton.connect("clicked()", self.selectConfigFile)
         self.refreshButton.connect("clicked()", self.refreshSessions)
-        self.exportButton.connect("clicked()", self.exportCurrentSegmentation)
         self.previousButton.connect("clicked()", self.loadPreviousSession)
         self.nextButton.connect("clicked()", self.loadNextSession)
-        self.editingSourceSelector.connect(
-            "currentIndexChanged(int)", self.onEditingSourceChanged
-        )
-        self.foregroundOpacitySlider.connect(
-            "valueChanged(double)", self.onForegroundOpacityChanged
-        )
         self.sessionSelector.connect("currentIndexChanged(int)", self.onSessionSelected)
 
         self.installVisibilityShortcut()
-        self.installUndoRedoShortcuts()
-        self.updateEditingControls()
+        self.installSegmentationCyclingShortcuts()
+        self.updateConfigDisplay()
         self.refreshSessions()
 
     def cleanup(self):
-        if self.segmentEditorWidget:
-            self.segmentEditorWidget.setMRMLScene(None)
-            self.segmentEditorWidget = None
-        self.segmentEditorNode = None
         if self.logic:
             self.logic.removeManagedNodesFromScene()
         self.removeVisibilityShortcut()
-        self.removeUndoRedoShortcuts()
+        self.removeSegmentationCyclingShortcuts()
 
-    def segmentEditorParameterNode(self):
-        if self.segmentEditorNode:
-            return self.segmentEditorNode
-
-        self.segmentEditorNode = slicer.mrmlScene.AddNewNodeByClass(
-            "vtkMRMLSegmentEditorNode",
-            "PediatricGliomaSegmentationBrowserEditor",
+    def updateConfigDisplay(self):
+        loaded_config_name = (
+            os.path.basename(loaded_config_path) if loaded_config_path else "(none loaded)"
         )
-        self.segmentEditorNode.SetAttribute(MANAGED_NODE_ATTRIBUTE, "1")
-        return self.segmentEditorNode
+        loaded_config_tooltip = loaded_config_path or (
+            "No config loaded. Use 'Load config JSON' to select one."
+        )
+        if loaded_config:
+            image_section = loaded_config["images"]
+            displayed_images = ", ".join(image_section["displayed_names"])
+            segmentation_names = ", ".join(
+                segmentation.display_name
+                for segmentation in loaded_config["segmentations"]
+            ) or "(none)"
+            images_root = image_section["folders_glob"]
+            images_subfolder = image_section["subfolder_glob"] or "(recursive)"
+        else:
+            displayed_images = "(none)"
+            segmentation_names = "(none)"
+            images_root = ""
+            images_subfolder = ""
+
+        self.pathsLabel.text = (
+            "Config: "
+            f"{loaded_config_name}\n"
+            "Images: "
+            f"{_compact_path(images_root)}\n"
+            "Image subfolder: "
+            f"{images_subfolder}\n"
+            "Displayed images: "
+            f"{displayed_images}\n"
+            "Segmentation sets: "
+            f"{segmentation_names}"
+        )
+        self.pathsLabel.toolTip = (
+            f"Config: {loaded_config_tooltip}\n"
+            f"Images: {images_root}\n"
+            f"Image subfolder: {images_subfolder}\n"
+            f"Displayed images: {displayed_images}\n"
+            f"Segmentation sets: {segmentation_names}"
+        )
+
+    def selectConfigFile(self):
+        start_directory = (
+            os.path.dirname(loaded_config_path)
+            if loaded_config_path
+            else os.path.dirname(__file__)
+        )
+        selected_path = qt.QFileDialog.getOpenFileName(
+            slicer.util.mainWindow(),
+            "Select plugin config JSON",
+            start_directory,
+            config_file_filter,
+        )
+        if isinstance(selected_path, (list, tuple)):
+            selected_path = selected_path[0]
+        if not selected_path:
+            return
+
+        try:
+            _load_config_values(selected_path)
+            self.logic.clearLoadedSession()
+            self.removeVisibilityShortcut()
+            self.removeSegmentationCyclingShortcuts()
+            self.installVisibilityShortcut()
+            self.installSegmentationCyclingShortcuts()
+            self.updateConfigDisplay()
+            self.refreshSessions()
+            self.statusLabel.text = (
+                f"Loaded config {os.path.basename(selected_path)}."
+            )
+        except Exception as exc:
+            self.statusLabel.text = f"Failed to load config: {exc}"
+            raise
 
     def installVisibilityShortcut(self):
         main_window = slicer.util.mainWindow()
@@ -487,7 +626,7 @@ class PediatricGliomaSegmentationBrowserWidget(
             "PediatricGliomaSegmentationBrowserToggleSegmentsShortcut"
         )
         self.visibilityShortcut.setKey(qt.QKeySequence(
-            TOGGLE_SEGMENT_VISIBILITY_SHORTCUT
+            toggle_segmentation_visibility_shortcut
         ))
         self.visibilityShortcut.setContext(qt.Qt.ApplicationShortcut)
         self.visibilityShortcut.connect("activated()", self.toggleSegmentationVisibility)
@@ -498,61 +637,82 @@ class PediatricGliomaSegmentationBrowserWidget(
             self.visibilityShortcut.deleteLater()
             self.visibilityShortcut = None
 
-    def installUndoRedoShortcuts(self):
+    def installSegmentationCyclingShortcuts(self):
         main_window = slicer.util.mainWindow()
         if not main_window:
             return
 
         for shortcut in main_window.findChildren(qt.QShortcut):
             if shortcut.objectName in (
-                UNDO_SHORTCUT_OBJECT_NAME,
-                REDO_SHORTCUT_OBJECT_NAME,
+                "SegmentationBrowserPreviousSegmentationShortcut",
+                "SegmentationBrowserNextSegmentationShortcut",
             ):
                 shortcut.setParent(None)
                 shortcut.deleteLater()
 
-        self.undoShortcut = qt.QShortcut(main_window)
-        self.undoShortcut.objectName = UNDO_SHORTCUT_OBJECT_NAME
-        self.undoShortcut.setKey(qt.QKeySequence(qt.QKeySequence.Undo))
-        self.undoShortcut.setContext(qt.Qt.ApplicationShortcut)
-        self.undoShortcut.connect("activated()", self.undoSegmentationEdit)
+        self.previousSegmentationShortcut = qt.QShortcut(main_window)
+        self.previousSegmentationShortcut.objectName = (
+            "SegmentationBrowserPreviousSegmentationShortcut"
+        )
+        self.previousSegmentationShortcut.setKey(
+            qt.QKeySequence(previous_segmentation_shortcut)
+        )
+        self.previousSegmentationShortcut.setContext(qt.Qt.ApplicationShortcut)
+        self.previousSegmentationShortcut.connect(
+            "activated()",
+            self.showPreviousSegmentation,
+        )
 
-        self.redoShortcut = qt.QShortcut(main_window)
-        self.redoShortcut.objectName = REDO_SHORTCUT_OBJECT_NAME
-        self.redoShortcut.setKey(qt.QKeySequence(qt.QKeySequence.Redo))
-        self.redoShortcut.setContext(qt.Qt.ApplicationShortcut)
-        self.redoShortcut.connect("activated()", self.redoSegmentationEdit)
+        self.nextSegmentationShortcut = qt.QShortcut(main_window)
+        self.nextSegmentationShortcut.objectName = (
+            "SegmentationBrowserNextSegmentationShortcut"
+        )
+        self.nextSegmentationShortcut.setKey(
+            qt.QKeySequence(next_segmentation_shortcut)
+        )
+        self.nextSegmentationShortcut.setContext(qt.Qt.ApplicationShortcut)
+        self.nextSegmentationShortcut.connect(
+            "activated()",
+            self.showNextSegmentation,
+        )
 
-    def removeUndoRedoShortcuts(self):
-        if self.undoShortcut:
-            self.undoShortcut.setParent(None)
-            self.undoShortcut.deleteLater()
-            self.undoShortcut = None
-        if self.redoShortcut:
-            self.redoShortcut.setParent(None)
-            self.redoShortcut.deleteLater()
-            self.redoShortcut = None
+    def removeSegmentationCyclingShortcuts(self):
+        if self.previousSegmentationShortcut:
+            self.previousSegmentationShortcut.setParent(None)
+            self.previousSegmentationShortcut.deleteLater()
+            self.previousSegmentationShortcut = None
+        if self.nextSegmentationShortcut:
+            self.nextSegmentationShortcut.setParent(None)
+            self.nextSegmentationShortcut.deleteLater()
+            self.nextSegmentationShortcut = None
 
     def toggleSegmentationVisibility(self):
         visible = self.logic.toggleSegmentationVisibility()
         if visible is None:
             return
+        segmentation_name = self.logic.activeSegmentationName() or "segmentation"
         self.statusLabel.text = (
-            f"Segmentation visibility {'on' if visible else 'off'} "
-            f"({TOGGLE_SEGMENT_VISIBILITY_SHORTCUT})."
+            f"{segmentation_name} visibility {'on' if visible else 'off'} "
+            f"({toggle_segmentation_visibility_shortcut})."
         )
 
-    def undoSegmentationEdit(self):
-        if not self.segmentEditorWidget:
+    def showPreviousSegmentation(self):
+        segmentation_name = self.logic.cycleVisibleSegmentation(-1)
+        if not segmentation_name:
             return
-        self.segmentEditorWidget.undo()
-        self.statusLabel.text = "Undid segmentation edit."
+        self.statusLabel.text = (
+            f"Showing {segmentation_name} "
+            f"({previous_segmentation_shortcut}/{next_segmentation_shortcut})."
+        )
 
-    def redoSegmentationEdit(self):
-        if not self.segmentEditorWidget:
+    def showNextSegmentation(self):
+        segmentation_name = self.logic.cycleVisibleSegmentation(1)
+        if not segmentation_name:
             return
-        self.segmentEditorWidget.redo()
-        self.statusLabel.text = "Redid segmentation edit."
+        self.statusLabel.text = (
+            f"Showing {segmentation_name} "
+            f"({previous_segmentation_shortcut}/{next_segmentation_shortcut})."
+        )
 
     def refreshSessions(self):
         previous_key = None
@@ -572,13 +732,12 @@ class PediatricGliomaSegmentationBrowserWidget(
         self.sessionSelector.blockSignals(False)
 
         if not sessions:
+            self.logic.clearLoadedSession()
             self.statusLabel.text = (
-                "No valid assigned sessions found for "
-                f"`{YOUR_INITIALS}`. A valid session must appear in "
-                "`pediatric-glioma-participants.csv` and contain exactly four "
-                "NIfTI images plus one `_dseg` segmentation."
+                "No valid sessions found. A valid session must match all configured "
+                "image rules and all configured segmentation rules for the same "
+                "BIDS subject/session pair."
             )
-            self.updateEditingControls()
             self.updateNavigationButtons()
             return
 
@@ -610,52 +769,10 @@ class PediatricGliomaSegmentationBrowserWidget(
         self.previousButton.enabled = has_sessions and current_index > 0
         self.nextButton.enabled = has_sessions and current_index < session_count - 1
 
-    def updateEditingControls(self):
-        available_source_names = self.logic.availableEditingSourceNames()
-        current_source_name = self.logic.currentEditingSourceName
-
-        self.editingSourceSelector.blockSignals(True)
-        self.editingSourceSelector.clear()
-        for source_name in available_source_names:
-            self.editingSourceSelector.addItem(source_name)
-        if current_source_name:
-            selected_index = self.editingSourceSelector.findText(current_source_name)
-            if selected_index >= 0:
-                self.editingSourceSelector.setCurrentIndex(selected_index)
-        self.editingSourceSelector.blockSignals(False)
-        self.editingSourceSelector.enabled = bool(available_source_names)
-
-        self.foregroundOpacitySlider.blockSignals(True)
-        self.foregroundOpacitySlider.value = self.logic.foregroundOpacity
-        self.foregroundOpacitySlider.blockSignals(False)
-        self.foregroundOpacitySlider.enabled = bool(available_source_names)
-        self.exportButton.enabled = self.logic.currentSession is not None
-
-    def onEditingSourceChanged(self, index: int):
-        if index < 0:
-            return
-        source_name = self.editingSourceSelector.itemText(index)
-        self.logic.setEditingSource(
-            source_name,
-            self.foregroundOpacitySlider.value,
-        )
-
-    def onForegroundOpacityChanged(self, value: float):
-        self.logic.setForegroundOpacity(value)
-
-    def exportCurrentSegmentation(self):
-        try:
-            output_path = self.logic.exportCurrentSegmentation(OUTPUT_SEG_FOLDER)
-            self.statusLabel.text = (
-                f"Exported segmentation to {output_path}"
-            )
-        except Exception as exc:
-            self.statusLabel.text = f"Failed to export segmentation: {exc}"
-            raise
-
     def onSessionSelected(self, index: int):
         self.updateNavigationButtons()
         if index < 0:
+            self.logic.clearLoadedSession()
             return
 
         session = self.sessionSelector.itemData(index)
@@ -664,11 +781,11 @@ class PediatricGliomaSegmentationBrowserWidget(
 
         try:
             self.logic.loadSession(session)
-            self.updateEditingControls()
             self.statusLabel.text = (
                 f"Loaded {session.display_name} "
                 f"({index + 1}/{self.sessionSelector.count}) with "
-                f"{len(session.image_paths)} images and 1 segmentation."
+                f"{len(session.display_image_names)} displayed image(s) and "
+                f"{len(session.segmentations)} segmentation(s)."
             )
         except Exception as exc:
             self.statusLabel.text = f"Failed to load {session.display_name}: {exc}"
@@ -687,7 +804,7 @@ class PediatricGliomaSegmentationBrowserLogic(ScriptedLoadableModuleLogic):
         scene_nodes.InitTraversal()
         node = scene_nodes.GetNextItemAsObject()
         while node:
-            if node.GetAttribute(MANAGED_NODE_ATTRIBUTE) == "1":
+            if node.GetAttribute(managed_node_attribute) == "1":
                 nodes_to_remove.append(node)
             node = scene_nodes.GetNextItemAsObject()
 
@@ -699,70 +816,51 @@ class PediatricGliomaSegmentationBrowserLogic(ScriptedLoadableModuleLogic):
         self.sessions: List[SessionRecord] = []
         self.loadedNodeIDs: List[str] = []
         self.currentSession = None
-        self.currentSegmentationNode = None
+        self.currentSegmentationNodes = []
+        self.currentVisibleSegmentationIndex = None
         self.currentVolumeNodesByName = {}
-        self.currentEditingSourceName = None
-        self.foregroundOpacity = 0
-        self.segmentEditorWidget = None
-        self.segmentEditorNode = None
 
     def refreshSessions(self) -> List[SessionRecord]:
-        self.sessions = discover_sessions(IMAGES_ROOT, SEGMENTATIONS_ROOT)
+        self.sessions = discover_sessions()
         return self.sessions
 
-    def setSegmentEditorWidget(self, segment_editor_widget, segment_editor_node):
-        self.segmentEditorWidget = segment_editor_widget
-        self.segmentEditorNode = segment_editor_node
+    def clearLoadedSession(self):
+        self._removePreviouslyLoadedNodes()
 
-    def availableEditingSourceNames(self) -> List[str]:
-        return _available_editing_source_names(
-            list(self.currentVolumeNodesByName.keys())
-        )
+    def activeSegmentationName(self):
+        if not self.currentSegmentationNodes:
+            return None
+        if self.currentVisibleSegmentationIndex is None:
+            return None
+        if not (0 <= self.currentVisibleSegmentationIndex < len(self.currentSegmentationNodes)):
+            return None
+        return self.currentSegmentationNodes[self.currentVisibleSegmentationIndex].GetName()
 
     def toggleSegmentationVisibility(self):
-        if not self.currentSegmentationNode:
+        if not self.currentSegmentationNodes:
             return None
 
-        display_node = self.currentSegmentationNode.GetDisplayNode()
+        active_index = self._normalizedVisibleSegmentationIndex()
+        if active_index is None:
+            return None
+        display_node = self.currentSegmentationNodes[active_index].GetDisplayNode()
         if not display_node:
             return None
 
         visible = not bool(display_node.GetVisibility())
-        display_node.SetVisibility(visible)
+        self._setExclusiveSegmentationVisibility(active_index, visible)
         return visible
 
-    def exportCurrentSegmentation(self, output_seg_folder: str) -> str:
-        if not self.currentSession or not self.currentSegmentationNode:
-            raise RuntimeError("No session is currently loaded.")
+    def cycleVisibleSegmentation(self, step: int):
+        if not self.currentSegmentationNodes:
+            return None
 
-        os.makedirs(output_seg_folder, exist_ok=True)
-        output_path = _output_segmentation_path(output_seg_folder, self.currentSession)
-
-        labelmap_node = slicer.mrmlScene.AddNewNodeByClass(
-            "vtkMRMLLabelMapVolumeNode",
-            "PediatricGliomaSegmentationBrowserExport",
-        )
-        try:
-            reference_volume_node = self.currentVolumeNodesByName.get("T1post")
-            if reference_volume_node:
-                self.currentSegmentationNode.SetReferenceImageGeometryParameterFromVolumeNode(
-                    reference_volume_node
-                )
-            success = slicer.modules.segmentations.logic().ExportAllSegmentsToLabelmapNode(
-                self.currentSegmentationNode,
-                labelmap_node,
-                slicer.vtkSegmentation.EXTENT_REFERENCE_GEOMETRY,
-            )
-
-            if not success:
-                raise RuntimeError("Slicer failed to export the segmentation to labelmap.")
-
-            if not slicer.util.saveNode(labelmap_node, output_path):
-                raise RuntimeError(f"Slicer failed to save {output_path}")
-        finally:
-            slicer.mrmlScene.RemoveNode(labelmap_node)
-
-        return output_path
+        active_index = self._normalizedVisibleSegmentationIndex()
+        if active_index is None:
+            active_index = 0
+        target_index = (active_index + step) % len(self.currentSegmentationNodes)
+        self._setExclusiveSegmentationVisibility(target_index, True)
+        return self.currentSegmentationNodes[target_index].GetName()
 
     def loadSession(self, session: SessionRecord):
         if not SLICER_AVAILABLE:
@@ -771,71 +869,29 @@ class PediatricGliomaSegmentationBrowserLogic(ScriptedLoadableModuleLogic):
         self._removePreviouslyLoadedNodes()
         self._ensureFourSliceLayout()
         self.currentSession = session
-        self.currentSegmentationNode = None
+        self.currentSegmentationNodes = []
         self.currentVolumeNodesByName = {}
 
-        volume_nodes = []
-        for image_path in session.image_paths:
-            volume_node = self._loadVolume(image_path)
-            volume_nodes.append(volume_node)
-
-        segmentation_node = self._loadSegmentation(session.segmentation_path)
-        self._trackNode(segmentation_node)
-        self._configureSegmentationDisplay(segmentation_node)
-        display_volume_nodes = self._buildDisplayVolumeNodes(volume_nodes, session)
-        self.currentSegmentationNode = segmentation_node
-        self._assignVolumesToViews(display_volume_nodes)
-        self._restoreEditingSource()
-        self._activateWindowLevelTool()
-
-    def setEditingSource(self, source_name: str, foreground_opacity: float = None):
-        if foreground_opacity is not None:
-            self.foregroundOpacity = foreground_opacity
-
-        if (
-            not source_name
-            or source_name not in self.currentVolumeNodesByName
-            or not self.currentSegmentationNode
-        ):
-            return
-
-        self.currentEditingSourceName = source_name
-        source_volume_node = self.currentVolumeNodesByName[source_name]
-        self._setSegmentEditorSourceVolume(
-            self.currentSegmentationNode,
-            source_volume_node,
-        )
-        self._assignForegroundVolumeToViews(
-            source_volume_node,
-            self.foregroundOpacity,
-        )
-
-    def setForegroundOpacity(self, foreground_opacity: float):
-        self.foregroundOpacity = foreground_opacity
-        if self.currentEditingSourceName:
-            self.setEditingSource(self.currentEditingSourceName)
-
-    def _restoreEditingSource(self):
-        available_source_names = self.availableEditingSourceNames()
-        if not available_source_names:
-            self.currentEditingSourceName = None
-            return
-
-        if self.currentEditingSourceName not in self.currentVolumeNodesByName:
-            self.currentEditingSourceName = next(
-                (
-                    source_name
-                    for source_name in ("T1post", "T1pre")
-                    if source_name in self.currentVolumeNodesByName
-                ),
-                available_source_names[0],
+        display_volume_nodes = []
+        for image_name in session.display_image_names:
+            volume_node = self._loadVolume(
+                session.image_paths_by_name[image_name],
+                image_name,
             )
+            self.currentVolumeNodesByName[image_name] = volume_node
+            display_volume_nodes.append(volume_node)
 
-        self.setEditingSource(self.currentEditingSourceName)
+        for session_segmentation in session.segmentations:
+            segmentation_node = self._loadSegmentation(session_segmentation)
+            self.currentSegmentationNodes.append(segmentation_node)
+
+        self._initializeVisibleSegmentation(session)
+        self._assignVolumesToViews(display_volume_nodes)
+        self._activateWindowLevelTool()
 
     def _trackNode(self, node):
         if node and node.GetID():
-            node.SetAttribute(MANAGED_NODE_ATTRIBUTE, "1")
+            node.SetAttribute(managed_node_attribute, "1")
             self.loadedNodeIDs.append(node.GetID())
 
     def _removePreviouslyLoadedNodes(self):
@@ -846,38 +902,44 @@ class PediatricGliomaSegmentationBrowserLogic(ScriptedLoadableModuleLogic):
                 scene.RemoveNode(node)
         self.loadedNodeIDs = []
         self.currentSession = None
-        self.currentSegmentationNode = None
+        self.currentSegmentationNodes = []
+        self.currentVisibleSegmentationIndex = None
         self.currentVolumeNodesByName = {}
 
-    def _loadVolume(self, image_path: str):
+    def _loadVolume(self, image_path: str, image_name: str):
         volume_node = slicer.util.loadVolume(image_path, {"show": False})
         if not volume_node:
             raise RuntimeError(f"Could not load image: {image_path}")
-        volume_node.SetName(_display_name_for_image_path(image_path))
+        volume_node.SetName(image_name)
         display_node = volume_node.GetDisplayNode()
         if display_node:
             display_node.SetInterpolate(False)
         self._trackNode(volume_node)
         return volume_node
 
-    def _loadSegmentation(self, segmentation_path: str):
+    def _loadSegmentation(self, session_segmentation: SessionSegmentation):
         segmentation_node = slicer.util.loadSegmentation(
-            segmentation_path,
+            session_segmentation.path,
             {"show": False},
         )
         if segmentation_node:
-            segmentation_node.SetName(SEGMENTATION_DISPLAY_NAME)
-            self._prepareSegmentation(segmentation_node)
+            self._trackNode(segmentation_node)
+            self._configureSegmentationNode(segmentation_node, session_segmentation)
             return segmentation_node
 
-        labelmap_node = slicer.util.loadLabelVolume(segmentation_path, {"show": False})
+        labelmap_node = slicer.util.loadLabelVolume(
+            session_segmentation.path,
+            {"show": False},
+        )
         if not labelmap_node:
-            raise RuntimeError(f"Could not load segmentation: {segmentation_path}")
+            raise RuntimeError(
+                f"Could not load segmentation: {session_segmentation.path}"
+            )
 
         self._trackNode(labelmap_node)
         segmentation_node = slicer.mrmlScene.AddNewNodeByClass(
             "vtkMRMLSegmentationNode",
-            SEGMENTATION_DISPLAY_NAME,
+            session_segmentation.display_name,
         )
         segmentation_node.CreateDefaultDisplayNodes()
         slicer.modules.segmentations.logic().ImportLabelmapToSegmentationNode(
@@ -888,185 +950,95 @@ class PediatricGliomaSegmentationBrowserLogic(ScriptedLoadableModuleLogic):
         self.loadedNodeIDs = [
             node_id for node_id in self.loadedNodeIDs if node_id != labelmap_node.GetID()
         ]
-        self._prepareSegmentation(segmentation_node)
+        self._configureSegmentationNode(segmentation_node, session_segmentation)
         return segmentation_node
 
-    def _prepareSegmentation(self, segmentation_node):
-        self._renameSegmentsFromLabelMap(segmentation_node)
-        self._ensureExpectedSegmentsExist(segmentation_node)
-
-    def _renameSegmentsFromLabelMap(self, segmentation_node):
-        segmentation = segmentation_node.GetSegmentation()
-        segment_ids = vtk.vtkStringArray()
-        segmentation.GetSegmentIDs(segment_ids)
-        for segment_index in range(segment_ids.GetNumberOfValues()):
-            segment = segmentation.GetSegment(segment_ids.GetValue(segment_index))
-            if not segment:
-                continue
-            label_value = segment.GetLabelValue()
-            if label_value in SEGMENT_LABEL_NAMES:
-                segment.SetName(SEGMENT_LABEL_NAMES[label_value])
-
-    def _ensureExpectedSegmentsExist(self, segmentation_node):
-        segmentation = segmentation_node.GetSegmentation()
-        segment_ids = vtk.vtkStringArray()
-        segmentation.GetSegmentIDs(segment_ids)
-
-        existing_label_values = set()
-        for segment_index in range(segment_ids.GetNumberOfValues()):
-            segment = segmentation.GetSegment(segment_ids.GetValue(segment_index))
-            if not segment:
-                continue
-            existing_label_values.add(segment.GetLabelValue())
-
-        for label_value, segment_name in SEGMENT_LABEL_NAMES.items():
-            if label_value in existing_label_values:
-                continue
-
-            segment_id = segmentation.AddEmptySegment("", segment_name)
-            segment = segmentation.GetSegment(segment_id)
-            if segment:
-                segment.SetLabelValue(label_value)
-
-    def _configureSegmentationDisplay(self, segmentation_node):
+    def _configureSegmentationNode(
+        self,
+        segmentation_node,
+        session_segmentation: SessionSegmentation,
+    ):
+        segmentation_node.SetName(session_segmentation.display_name)
         display_node = segmentation_node.GetDisplayNode()
         if not display_node:
             segmentation_node.CreateDefaultDisplayNodes()
             display_node = segmentation_node.GetDisplayNode()
+        if not display_node:
+            return
 
+        display_node.SetVisibility(session_segmentation.visible)
         display_node.SetVisibility2D(True)
         display_node.SetVisibility3D(True)
-        display_node.SetVisibility2DFill(True)
-        display_node.SetOpacity2DFill(0.35)
-        display_node.SetVisibility2DOutline(True)
-        display_node.SetOpacity2DOutline(1.0)
+        if session_segmentation.display_type == "outline":
+            display_node.SetVisibility2DFill(False)
+            display_node.SetOpacity2DFill(0.0)
+            display_node.SetVisibility2DOutline(True)
+            display_node.SetOpacity2DOutline(1.0)
+        else:
+            display_node.SetVisibility2DFill(True)
+            display_node.SetOpacity2DFill(0.35)
+            display_node.SetVisibility2DOutline(True)
+            display_node.SetOpacity2DOutline(1.0)
 
-    def _buildDisplayVolumeNodes(self, volume_nodes, session: SessionRecord):
-        volume_nodes_by_name = {
-            volume_node.GetName(): volume_node for volume_node in volume_nodes
+        segments_by_label = {
+            segment_definition.label: segment_definition
+            for segment_definition in session_segmentation.segments
         }
+        segmentation = segmentation_node.GetSegmentation()
+        segment_ids = vtk.vtkStringArray()
+        segmentation.GetSegmentIDs(segment_ids)
+        for segment_index in range(segment_ids.GetNumberOfValues()):
+            segment_id = segment_ids.GetValue(segment_index)
+            segment = segmentation.GetSegment(segment_id)
+            if not segment:
+                continue
+            segment_definition = segments_by_label.get(segment.GetLabelValue())
+            if not segment_definition:
+                continue
+            segment.SetName(segment_definition.name)
+            if segment_definition.color:
+                segment.SetColor(*segment_definition.color)
+            display_node.SetSegmentVisibility(segment_id, segment_definition.visible)
 
-        t1post_node = volume_nodes_by_name.get("T1post")
-        t1pre_node = volume_nodes_by_name.get("T1pre")
-        flair_node = volume_nodes_by_name.get("FLAIR")
-        t2_node = volume_nodes_by_name.get("T2")
-
-        missing_modalities = [
-            modality_name
-            for modality_name, volume_node in (
-                ("T1post", t1post_node),
-                ("T1pre", t1pre_node),
-                ("FLAIR", flair_node),
-                ("T2", t2_node),
-            )
-            if volume_node is None
-        ]
-        if missing_modalities:
-            raise RuntimeError(
-                "Missing expected modality volumes: " + ", ".join(missing_modalities)
-            )
-
-        subtraction_node = self._createSubtractionVolumeNode(
-            t1post_node,
-            t1pre_node,
-            session,
-        )
-        if subtraction_node:
-            volume_nodes_by_name[SUBTRACTION_DISPLAY_NAME] = subtraction_node
-
-        self.currentVolumeNodesByName = volume_nodes_by_name
-        display_nodes_by_name = {
-            "T1post": t1post_node,
-            "T1pre": t1pre_node,
-            "FLAIR": flair_node,
-            "T2": t2_node,
-        }
-        if subtraction_node:
-            display_nodes_by_name[SUBTRACTION_DISPLAY_NAME] = subtraction_node
-        resolved_display_volume_names = _resolved_displayed_volume_names(
-            DISPLAYED_VIEW_VOLUME_NAMES,
-            list(display_nodes_by_name.keys()),
-        )
-
-        return [
-            display_nodes_by_name[display_name]
-            for display_name in resolved_display_volume_names
-        ]
-
-    def _createSubtractionVolumeNode(self, t1post_node, t1pre_node, session: SessionRecord):
-        mismatch_reason = self._volumeGeometryMismatchReason(t1post_node, t1pre_node)
-        if mismatch_reason:
-            slicer.util.warningDisplay(
-                "Could not create the subtraction image for "
-                f"{session.display_name}: {mismatch_reason}. "
-                "Displaying T2 instead.",
-                windowTitle="Subtraction image unavailable",
-            )
+    def _normalizedVisibleSegmentationIndex(self):
+        if not self.currentSegmentationNodes:
             return None
+        if self.currentVisibleSegmentationIndex is None:
+            return 0
+        if self.currentVisibleSegmentationIndex < 0:
+            return 0
+        if self.currentVisibleSegmentationIndex >= len(self.currentSegmentationNodes):
+            return len(self.currentSegmentationNodes) - 1
+        return self.currentVisibleSegmentationIndex
 
-        subtraction_array = (
-            slicer.util.arrayFromVolume(t1post_node).astype(np.float32)
-            - slicer.util.arrayFromVolume(t1pre_node).astype(np.float32)
-        )
-        subtraction_node = slicer.modules.volumes.logic().CloneVolume(
-            t1post_node,
-            SUBTRACTION_DISPLAY_NAME,
-        )
-        slicer.util.updateVolumeFromArray(subtraction_node, subtraction_array)
-        subtraction_node.SetName(SUBTRACTION_DISPLAY_NAME)
-        subtraction_display_node = subtraction_node.GetDisplayNode()
-        if subtraction_display_node:
-            subtraction_display_node.SetInterpolate(False)
-        self._trackNode(subtraction_node)
-        return subtraction_node
+    def _setExclusiveSegmentationVisibility(self, visible_index: int, visible: bool):
+        self.currentVisibleSegmentationIndex = visible_index
+        for index, segmentation_node in enumerate(self.currentSegmentationNodes):
+            display_node = segmentation_node.GetDisplayNode()
+            if not display_node:
+                continue
+            display_node.SetVisibility(visible and index == visible_index)
 
-    def _volumeGeometryMismatchReason(self, volume_node_a, volume_node_b):
-        image_data_a = volume_node_a.GetImageData()
-        image_data_b = volume_node_b.GetImageData()
-        if image_data_a is None or image_data_b is None:
-            return "one or both source volumes are missing image data"
+    def _initializeVisibleSegmentation(self, session: SessionRecord):
+        if not self.currentSegmentationNodes:
+            self.currentVisibleSegmentationIndex = None
+            return
 
-        if image_data_a.GetDimensions() != image_data_b.GetDimensions():
-            return (
-                f"shape mismatch ({image_data_a.GetDimensions()} vs "
-                f"{image_data_b.GetDimensions()})"
-            )
-
-        if not np.allclose(volume_node_a.GetSpacing(), volume_node_b.GetSpacing()):
-            return (
-                f"spacing mismatch ({volume_node_a.GetSpacing()} vs "
-                f"{volume_node_b.GetSpacing()})"
-            )
-
-        if not np.allclose(volume_node_a.GetOrigin(), volume_node_b.GetOrigin()):
-            return (
-                f"origin mismatch ({volume_node_a.GetOrigin()} vs "
-                f"{volume_node_b.GetOrigin()})"
-            )
-
-        ijk_to_ras_matrix_a = vtk.vtkMatrix4x4()
-        ijk_to_ras_matrix_b = vtk.vtkMatrix4x4()
-        volume_node_a.GetIJKToRASMatrix(ijk_to_ras_matrix_a)
-        volume_node_b.GetIJKToRASMatrix(ijk_to_ras_matrix_b)
-        matrix_elements_a = [
-            ijk_to_ras_matrix_a.GetElement(row, column)
-            for row in range(4)
-            for column in range(4)
+        visible_indices = [
+            index
+            for index, segmentation in enumerate(session.segmentations)
+            if segmentation.visible
         ]
-        matrix_elements_b = [
-            ijk_to_ras_matrix_b.GetElement(row, column)
-            for row in range(4)
-            for column in range(4)
-        ]
-        if not np.allclose(matrix_elements_a, matrix_elements_b):
-            return "IJK-to-RAS geometry mismatch"
-
-        return None
+        initial_index = visible_indices[0] if visible_indices else 0
+        self._setExclusiveSegmentationVisibility(
+            initial_index,
+            bool(visible_indices),
+        )
 
     def _ensureFourSliceLayout(self):
         layout_node = slicer.app.layoutManager().layoutLogic().GetLayoutNode()
-        if layout_node.GetLayoutDescription(CUSTOM_LAYOUT_ID):
-            slicer.app.layoutManager().setLayout(CUSTOM_LAYOUT_ID)
+        if layout_node.GetLayoutDescription(custom_layout_id):
+            slicer.app.layoutManager().setLayout(custom_layout_id)
             return
 
         layout_description = """
@@ -1109,12 +1081,12 @@ class PediatricGliomaSegmentationBrowserLogic(ScriptedLoadableModuleLogic):
   </item>
 </layout>
 """
-        layout_node.AddLayoutDescription(CUSTOM_LAYOUT_ID, layout_description)
-        slicer.app.layoutManager().setLayout(CUSTOM_LAYOUT_ID)
+        layout_node.AddLayoutDescription(custom_layout_id, layout_description)
+        slicer.app.layoutManager().setLayout(custom_layout_id)
 
     def _assignVolumesToViews(self, volume_nodes):
         layout_manager = slicer.app.layoutManager()
-        for view_name, volume_node in zip(FOUR_SLICE_VIEW_NAMES, volume_nodes):
+        for index, view_name in enumerate(four_slice_view_names):
             slice_widget = layout_manager.sliceWidget(view_name)
             if not slice_widget:
                 continue
@@ -1123,7 +1095,10 @@ class PediatricGliomaSegmentationBrowserLogic(ScriptedLoadableModuleLogic):
             composite_node.SetDoPropagateVolumeSelection(False)
             composite_node.SetLinkedControl(True)
             composite_node.SetHotLinkedControl(True)
-            composite_node.SetBackgroundVolumeID(volume_node.GetID())
+            background_volume_id = None
+            if index < len(volume_nodes):
+                background_volume_id = volume_nodes[index].GetID()
+            composite_node.SetBackgroundVolumeID(background_volume_id)
             composite_node.SetForegroundVolumeID(None)
             composite_node.SetForegroundOpacity(0.0)
             composite_node.SetLabelVolumeID(None)
@@ -1132,37 +1107,8 @@ class PediatricGliomaSegmentationBrowserLogic(ScriptedLoadableModuleLogic):
             slice_node.SetOrientationToAxial()
             slice_widget.sliceLogic().FitSliceToAll()
 
-    def _assignForegroundVolumeToViews(self, volume_node, foreground_opacity: float):
-        layout_manager = slicer.app.layoutManager()
-        for view_name in FOUR_SLICE_VIEW_NAMES:
-            slice_widget = layout_manager.sliceWidget(view_name)
-            if not slice_widget:
-                continue
-
-            composite_node = slice_widget.sliceLogic().GetSliceCompositeNode()
-            composite_node.SetDoPropagateVolumeSelection(False)
-            composite_node.SetForegroundVolumeID(volume_node.GetID())
-            composite_node.SetForegroundOpacity(foreground_opacity)
-
     def _activateWindowLevelTool(self):
         interaction_node = slicer.app.applicationLogic().GetInteractionNode()
         interaction_node.SetCurrentInteractionMode(
             slicer.vtkMRMLInteractionNode.AdjustWindowLevel
         )
-
-    def _segmentEditorWidget(self):
-        return self.segmentEditorWidget
-
-    def _setSegmentEditorSourceVolume(self, segmentation_node, source_volume_node):
-        editor_widget = self._segmentEditorWidget()
-        if not editor_widget:
-            return
-
-        if hasattr(editor_widget, "setAutoShowSourceVolumeNode"):
-            editor_widget.setAutoShowSourceVolumeNode(False)
-        elif hasattr(editor_widget, "setAutoShowMasterVolumeNode"):
-            editor_widget.setAutoShowMasterVolumeNode(False)
-        if self.segmentEditorNode:
-            editor_widget.setMRMLSegmentEditorNode(self.segmentEditorNode)
-        editor_widget.setSegmentationNode(segmentation_node)
-        editor_widget.setSourceVolumeNode(source_volume_node)

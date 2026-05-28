@@ -1,55 +1,79 @@
-# Pediatric Glioma Segmentation Browser
+# Segmentation Browser
 
-This repository contains a first-pass Python scripted module for 3D Slicer:
-`PediatricGliomaSegmentationBrowser.py`.
+`PediatricGliomaSegmentationBrowser.py` is a view-only 3D Slicer module for
+rapidly browsing pediatric glioma cases. It loads a config JSON, discovers
+valid sessions by matching BIDS-style filenames, and shows the configured image
+set plus the matching segmentation overlays in a linked 2x2 axial layout.
 
-The module is currently hard-coded to these dataset roots:
-
-- Images: `/Users/brian/repos/pediatric-glioma-segmentation/data/datasets/derivatives/preprocessed/images`
-- Segmentations: `/Users/brian/repos/pediatric-glioma-segmentation/data/datasets/derivatives/preprocessed/ground-truth-segs`
-- Participants CSV: `/Users/brian/repos/slicer-plugin/pediatric-glioma-participants.csv`
-- Output folder: `/Users/brian/repos/pediatric-glioma-segmentation/exported-segmentations`
-- Assignee filter: `YOUR_INITIALS = "BK"`
+The module currently defaults to `peds-glioma-segs.json` in this repository if
+that file exists. If no default JSON is present, the module starts without a
+config and you can pick one with `Load config JSON`.
 
 ## What it does
 
-- Reads `pediatric-glioma-participants.csv` and only considers rows whose
-  `assignee` matches `YOUR_INITIALS`.
-- Uses each selected row's `participant_id` and `session_id` to construct the
-  image and segmentation paths.
-- Keeps only sessions with exactly 4 image files in `anat/`.
-- Keeps only sessions with exactly 1 segmentation file containing `_dseg` in the
-  matching segmentation `anat/` folder.
-- Lists all valid sessions in a dropdown. Adds `Previous` and `Next` buttons for quick case-to-case navigation.
-- When you select a session, unloads the prior case loaded by this module, then
-  loads the 4 images and the segmentation for the selected session.
-- Switches Slicer into a custom 2x2 linked axial slice layout so the 4 loaded
-  modalities are visible side by side.
-- Displays `T1post`, `T1pre`, `FLAIR`, and a derived `T1post - T1pre`
-  subtraction image.
-- If `T1post` and `T1pre` do not have matching shape and geometry, shows an
-  alert and falls back to displaying `T2` instead of the subtraction image.
-- Links the slice views so pan, zoom, and slice scrolling stay synchronized.
-- Lets you choose an explicit `Editing source` volume for Segment Editor tools.
-- Shows the chosen editing source as a foreground overlay in all four slice
-  views so threshold-based editing is consistent while all backgrounds remain
-  visible.
-- Adds a global `Shift+V` shortcut to toggle the current segmentation
-  visibility while editing.
-- Uses the top-level `DISPLAYED_VIEW_VOLUME_NAMES` constant to control which
-  volumes appear in the four slice views and in what order.
-- Embeds the full Segment Editor pane directly in this module so you can edit
-  without switching modules.
-- Adds an `Export segmentation` button that writes the current segmentation to
-  `OUTPUT_SEG_FOLDER` as a `.nii.gz` file using the original segmentation
-  filename, without a save confirmation dialog.
-- Names the loaded segmentation node `glioma segmentation`.
-- Renames loaded image nodes to cleaner modality labels: `T1post`, `T1pre`,
-  `FLAIR`, and `T2`.
-- Turns pixel interpolation off for the loaded image displays.
-- Automatically activates the window/level mouse tool after loading a case.
-- Tries to point Segment Editor at the loaded segmentation and a preferred edit
-  volume (`T1post` first, then `T1pre`).
+- Discovers sessions by parsing `(subject, session)` from BIDS-style filenames
+  such as `sub-00001_ses-000_...`.
+- Matches images and segmentations by that parsed `(subject, session)` pair.
+- Treats image filename rules as regex-capable so `T1post` and `T1pre` can be
+  distinguished even though both end with `_T1w.nii.gz`.
+- Keeps only sessions that satisfy every configured image rule and every
+  configured segmentation rule exactly once.
+- Lists all valid sessions in a dropdown and adds `Previous` / `Next` buttons.
+- Loads the configured displayed images into a linked 2x2 axial slice layout.
+- Loads the matching segmentation set(s), applies configured names/colors per
+  label, and respects each segmentation's `visible` and `display_type` values.
+- Turns pixel interpolation off for loaded image displays.
+- Automatically activates the window/level mouse tool after each case load.
+- Adds `Shift+V` to toggle visibility of the loaded segmentation overlays.
+- Adds `[` and `]` to cycle backward/forward through loaded segmentations while
+  keeping only one segmentation visible at a time.
+- Removes nodes created by the module when switching sessions or reloading the
+  module in developer mode.
+
+This version does not embed Segment Editor and does not provide export tools.
+
+## Config schema
+
+The current JSON format looks like this:
+
+```json
+{
+  "image_folders": "/path/to/images/*",
+  "image_subfolder": "ses-???/anat",
+  "images": [
+    {
+      "display_name": "T1post",
+      "filename_regex": "^sub-[^_]+_ses-[^_]+_ce-gadolinium_T1w\\.nii\\.gz$",
+      "display": true
+    }
+  ],
+  "segmentations": [
+    {
+      "segmentation_folders": "/path/to/segmentations/*",
+      "segmentation_subfolder": "ses-???/anat",
+      "display_name": "Glioma segmentation",
+      "filename_regex": "^sub-[^_]+_ses-[^_]+_space-orig_dseg\\.nii\\.gz$",
+      "visible": true,
+      "display_type": "fill",
+      "segments": [
+        {
+          "label": 1,
+          "name": "enhancing tissue",
+          "color": [255, 0, 0],
+          "visible": true
+        }
+      ]
+    }
+  ]
+}
+```
+
+Notes:
+
+- `filename_regex` is preferred for modality matching.
+- `filename` is still accepted as a glob-style fallback.
+- `display_type` currently supports `fill` and `outline`.
+- The browser layout supports at most 4 displayed images at once.
 
 ## How to use it in Slicer
 
@@ -57,17 +81,11 @@ The module is currently hard-coded to these dataset roots:
 2. Go to `Edit > Application Settings > Modules`.
 3. Add `/Users/brian/repos/slicer-plugin` to `Additional module paths`.
 4. Restart Slicer or click `Reload and Test`.
-5. Open the `Pediatric Glioma Segmentation Browser` module.
-6. Pick a session from the dropdown or use `Previous` / `Next`.
-7. Choose an `Editing source` if you want Segment Editor tools such as
-   `Threshold`, or `Paint` with masking, to operate from a specific image.
-8. Adjust `Edit overlay` opacity if you want the editing source to be more or
-   less visible across all views.
-9. Press `Shift+V` at any time to toggle all loaded segments on or off.
-10. Click `Export segmentation` to write the current edited segmentation to the
-    configured output folder.
-
-The windowing tool will be automatically selected after each case load.
+5. Open `Segmentation Browser`.
+6. If needed, click `Load config JSON` and select a config file.
+7. Pick a session from the dropdown or use `Previous` / `Next`.
+8. Use `Shift+V` to toggle the currently selected segmentation visibility.
+9. Use `[` and `]` to cycle backward/forward through the loaded segmentations.
 
 ## Reload during development
 
@@ -75,7 +93,7 @@ To reload the scripted module without restarting Slicer:
 
 1. Open `Edit > Application Settings > Developer`.
 2. Turn on `Developer mode`.
-3. Reopen `Pediatric Glioma Segmentation Browser`.
+3. Reopen `Segmentation Browser`.
 4. Click the module's `Reload` button.
 
 You can also reload it from the Python interactor:
@@ -83,10 +101,3 @@ You can also reload it from the Python interactor:
 ```python
 slicer.util.reloadScriptedModule("PediatricGliomaSegmentationBrowser")
 ```
-
-## Notes
-
-- Switching sessions removes the previously loaded nodes that were created by this
-  module from the scene.
-- This version focuses only on dataset discovery, loading, and rapid case
-  switching.
