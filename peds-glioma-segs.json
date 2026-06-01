@@ -1,5 +1,5 @@
 {
-  "image_folders": "/Users/brian/repos/pediatric-glioma-segmentation/data/datasets/derivatives/preprocessed/raw/*",
+  "image_folders": "/mnt/data/cortechs/repos/pediatric-glioma-segmentation/data/datasets/sourcedata/raw/*",
   "image_subfolder": "ses-???/anat",
   "images": [
     {
@@ -25,7 +25,7 @@
   ],
   "segmentations": [
     {
-      "segmentation_folders": "/Users/brian/repos/pediatric-glioma-segmentation/data/datasets/derivatives/ground-truth-segs-dev/*",
+      "segmentation_folders": "/mnt/data/cortechs/repos/pediatric-glioma-segmentation/data/datasets/derivatives/ground-truth-segs-dev/*",
       "segmentation_subfolder": "ses-???/anat",
       "display_name": "dev seg",
       "filename_regex": "^sub-[^_]+_ses-[^_]+_space-orig_dseg\\.nii\\.gz$",
@@ -58,9 +58,8 @@
         }
       ]
     },
-
     {
-      "segmentation_folders": "/Users/brian/repos/pediatric-glioma-segmentation/data/datasets/derivatives/ground-truth-segs-updated/*",
+      "segmentation_folders": "/mnt/data/cortechs/repos/pediatric-glioma-segmentation/data/datasets/derivatives/ground-truth-segs-updated/*",
       "segmentation_subfolder": "ses-???/anat",
       "display_name": "onq-2896 seg",
       "filename_regex": "^sub-[^_]+_ses-[^_]+_space-orig_dseg\\.nii\\.gz$",
@@ -93,6 +92,5 @@
         }
       ]
     }
-
   ]
 }
