@@ -2,3 +2,8 @@
 .ipynb_checkpoints/
 *.ipynb
 __pycache__
+
+# Per-user plugin configs (keep personal paths out of git). The tracked template
+# is peds-glioma-segs.example.json; copy it to one of these for your machine.
+*.local.json
+peds-glioma-segs.json

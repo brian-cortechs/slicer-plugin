@@ -1,0 +1,46 @@
+{
+  "_comment": "Copy this to a local config (e.g. peds-glioma-segs.json or my-config.local.json), edit the paths for your machine, and load it with 'Load config JSON'. Local configs are gitignored so personal paths are never committed. Omit the 'editing' block for review-only.",
+
+  "image_folders": "/path/to/pediatric-glioma-segmentation/data/datasets/sourcedata/raw/*",
+  "image_subfolder": "ses-???/anat",
+  "images": [
+    {"display_name": "T1post", "filename_regex": "^sub-[^_]+_ses-[^_]+_ce-gadolinium_T1w\\.nii\\.gz$", "display": true},
+    {"display_name": "T1pre",  "filename_regex": "^sub-[^_]+_ses-[^_]+_T1w\\.nii\\.gz$",               "display": true},
+    {"display_name": "FLAIR",  "filename_regex": "^sub-[^_]+_ses-[^_]+_FLAIR\\.nii\\.gz$",             "display": true},
+    {"display_name": "T2",     "filename_regex": "^sub-[^_]+_ses-[^_]+_T2w?\\.nii\\.gz$",              "display": true}
+  ],
+
+  "segmentations": [
+    {
+      "segmentation_folders": "/path/to/pediatric-glioma-segmentation/data/datasets/derivatives/ground-truth-segs-dev/*",
+      "segmentation_subfolder": "ses-???/anat",
+      "display_name": "dev seg",
+      "filename_regex": "^sub-[^_]+_ses-[^_]+_space-orig_dseg\\.nii\\.gz$",
+      "visible": true,
+      "display_type": "outline",
+      "segments": [
+        {"label": 1, "name": "enhancing tissue",         "color": [255, 0, 0]},
+        {"label": 2, "name": "non-enhancing tumor core", "color": [0, 255, 0]},
+        {"label": 3, "name": "cystic component",         "color": [0, 0, 255]},
+        {"label": 4, "name": "peritumoral edema",        "color": [255, 255, 0]}
+      ]
+    }
+  ],
+
+  "editing": {
+    "segmentation_folders": "/path/to/pediatric-glioma-segmentation/data/datasets/derivatives/ground-truth-segs/*",
+    "segmentation_subfolder": "ses-???/anat",
+    "filename_regex": "^sub-[^_]+_ses-[^_]+_space-orig_dseg\\.nii\\.gz$",
+    "output_folder": "/path/to/my-edited-segs",
+    "display_name": "my edit",
+    "display_type": "fill",
+    "editing_sources": ["T1post", "T1pre", "T1 subtraction", "FLAIR", "T2"],
+    "subtraction": {"display_name": "T1 subtraction", "minuend": "T1post", "subtrahend": "T1pre"},
+    "segments": [
+      {"label": 1, "name": "enhancing tissue",         "color": [255, 0, 0]},
+      {"label": 2, "name": "non-enhancing tumor core", "color": [0, 255, 0]},
+      {"label": 3, "name": "cystic component",         "color": [0, 0, 255]},
+      {"label": 4, "name": "peritumoral edema",        "color": [255, 255, 0]}
+    ]
+  }
+}
