@@ -25,6 +25,9 @@ next_segmentation_shortcut = "]"
 undo_shortcut_object_name = "PediatricGliomaSegmentationBrowserUndoShortcut"
 redo_shortcut_object_name = "PediatricGliomaSegmentationBrowserRedoShortcut"
 subtraction_default_display_name = "T1 subtraction"
+start_source_auto_label = "Auto (resume edits, else edit source)"
+start_source_edit_label = "Edit source"
+start_source_empty_label = "Empty (blank)"
 config_file_filter = "JSON files (*.json)"
 bids_subject_session_pattern = re.compile(r"(sub-[^_]+)_(ses-[^_]+)")
 
@@ -592,6 +595,7 @@ class PediatricGliomaSegmentationBrowserWidget(
         self.mode = "review"
         self.modeSelector = None
         self.segmentModePanel = None
+        self.startSourceSelector = None
         self.exportButton = None
         self.editingSourceSelector = None
         self.foregroundOpacitySlider = None
@@ -688,6 +692,17 @@ class PediatricGliomaSegmentationBrowserWidget(
         controlsForm = qt.QFormLayout()
         panelLayout.addLayout(controlsForm)
 
+        self.startSourceSelector = qt.QComboBox()
+        self.startSourceSelector.toolTip = (
+            "Which segmentation to load as the starting point when you open a case "
+            "for editing: resume your prior export, the ground-truth edit source, a "
+            "comparison layer (e.g. dev originals), or a blank segmentation. Changing "
+            "this reloads the current case from the chosen source."
+        )
+        for label in self.logic.availableStartSourceLabels():
+            self.startSourceSelector.addItem(label)
+        controlsForm.addRow("Start from", self.startSourceSelector)
+
         self.exportButton = qt.QPushButton("Export segmentation")
         self.exportButton.toolTip = (
             "Write the edited segmentation to the configured output_folder, "
@@ -729,6 +744,9 @@ class PediatricGliomaSegmentationBrowserWidget(
             self.segmentEditorWidget, self.segmentEditorNode
         )
 
+        self.startSourceSelector.connect(
+            "currentIndexChanged(int)", self.onStartSourceChanged
+        )
         self.exportButton.connect("clicked()", self.onExportClicked)
         self.editingSourceSelector.connect(
             "currentIndexChanged(int)", self.onEditingSourceChanged
@@ -971,6 +989,14 @@ class PediatricGliomaSegmentationBrowserWidget(
             self.segmentEditorWidget.redo()
             self.statusLabel.text = "Redid segmentation edit."
 
+    def onStartSourceChanged(self, index: int):
+        if index < 0:
+            return
+        self.logic.setStartSourceLabel(self.startSourceSelector.itemText(index))
+        current_index = self.sessionSelector.currentIndex
+        if current_index >= 0:
+            self.onSessionSelected(current_index)
+
     def updateEditingControls(self):
         if not self.editingAvailable:
             return
@@ -1109,14 +1135,14 @@ class PediatricGliomaSegmentationBrowserWidget(
             self.updateEditingControls()
             position = f"({index + 1}/{self.sessionSelector.count})"
             if self.mode == "segment":
-                source_note = (
-                    "editing source seg"
-                    if session.editable_path
-                    else "empty (new annotation)"
+                start_label = (
+                    self.startSourceSelector.currentText
+                    if self.startSourceSelector
+                    else start_source_auto_label
                 )
                 self.statusLabel.text = (
-                    f"[Segment] {session.display_name} {position} — {source_note}. "
-                    "Export saves to the configured output_folder."
+                    f"[Segment] {session.display_name} {position} — started from "
+                    f"'{start_label}'. Export saves to the configured output_folder."
                 )
             else:
                 self.statusLabel.text = (
@@ -1162,6 +1188,7 @@ class PediatricGliomaSegmentationBrowserLogic(ScriptedLoadableModuleLogic):
         self.segmentEditorWidget = None
         self.segmentEditorNode = None
         self.mode = "review"
+        self.startSourceLabel = start_source_auto_label
 
     def refreshSessions(self) -> List[SessionRecord]:
         self.sessions = discover_sessions()
@@ -1563,13 +1590,45 @@ class PediatricGliomaSegmentationBrowserLogic(ScriptedLoadableModuleLogic):
             filename,
         )
 
-    def _loadEditableSegmentation(self, session: SessionRecord, editing):
+    def availableStartSourceLabels(self) -> List[str]:
+        editing = loaded_config.get("editing") if loaded_config else None
+        if not editing:
+            return []
+        labels = [start_source_auto_label, start_source_edit_label]
+        for segmentation_definition in (loaded_config.get("segmentations") or []):
+            labels.append(segmentation_definition.display_name)
+        labels.append(start_source_empty_label)
+        return labels
+
+    def setStartSourceLabel(self, label: str):
+        self.startSourceLabel = label or start_source_auto_label
+
+    def _resolveStartSourcePath(self, session: SessionRecord, editing):
+        label = self.startSourceLabel
         output_path = self._editableOutputPath(session, editing)
-        # Resume from a prior export if one exists, else load the source seg to correct.
+        if label == start_source_empty_label:
+            return None
+        if label == start_source_edit_label:
+            return session.editable_path
+        if label == start_source_auto_label:
+            return output_path if os.path.isfile(output_path) else session.editable_path
+        # Otherwise a comparison layer chosen by its display name.
+        for session_segmentation in session.segmentations:
+            if session_segmentation.display_name == label:
+                return session_segmentation.path
+        # Chosen comparison not present for this case; fall back to a prior export if
+        # this is the output-backed layer, else nothing (start blank).
         if os.path.isfile(output_path):
-            source_path = output_path
-        else:
-            source_path = session.editable_path
+            for segmentation_definition in (loaded_config.get("segmentations") or []):
+                if (
+                    segmentation_definition.display_name == label
+                    and editing.output_folder in segmentation_definition.folders_glob
+                ):
+                    return output_path
+        return None
+
+    def _loadEditableSegmentation(self, session: SessionRecord, editing):
+        source_path = self._resolveStartSourcePath(session, editing)
 
         if source_path and os.path.isfile(source_path):
             segmentation_node = self._importSegmentationNodeFromFile(
