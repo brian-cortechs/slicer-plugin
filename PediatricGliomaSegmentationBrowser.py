@@ -1758,12 +1758,18 @@ class PediatricGliomaSegmentationBrowserLogic(ScriptedLoadableModuleLogic):
         if not reference_volume_node:
             raise RuntimeError("No reference image volume is available for export.")
 
-        # FIX: build the output labelmap by compositing each segment's own mask at its
-        # own LabelValue. The saved integer for a region is the segment's label, never
-        # its position in the segment list -- so labels can't be permuted on export.
+        # FIX: map each segment to its canonical label by NAME (exactly what is shown
+        # and selected in the Segment Editor), falling back to the segment's own
+        # LabelValue only if the name is not in the config. Then composite each
+        # segment's mask at that label -- order/empties cannot permute the output.
+        editing_label_by_name = {
+            segment_definition.name: segment_definition.label
+            for segment_definition in editing.segments
+        }
         reference_array = slicer.util.arrayFromVolume(reference_volume_node)
         output_array = np.zeros(reference_array.shape, dtype=np.int16)
 
+        diagnostics = []
         segmentation = self.currentEditableNode.GetSegmentation()
         segment_ids = vtk.vtkStringArray()
         segmentation.GetSegmentIDs(segment_ids)
@@ -1772,7 +1778,12 @@ class PediatricGliomaSegmentationBrowserLogic(ScriptedLoadableModuleLogic):
             segment = segmentation.GetSegment(segment_id)
             if not segment:
                 continue
-            label_value = int(segment.GetLabelValue())
+            segment_name = segment.GetName()
+            label_value = editing_label_by_name.get(segment_name)
+            label_source = "name"
+            if label_value is None:
+                label_value = int(segment.GetLabelValue())
+                label_source = "GetLabelValue"
             try:
                 mask = slicer.util.arrayFromSegmentBinaryLabelmap(
                     self.currentEditableNode, segment_id, reference_volume_node
@@ -1782,6 +1793,11 @@ class PediatricGliomaSegmentationBrowserLogic(ScriptedLoadableModuleLogic):
                 mask = slicer.util.arrayFromSegmentBinaryLabelmap(
                     self.currentEditableNode, segment_id
                 )
+            voxel_count = int((mask > 0).sum()) if mask is not None else 0
+            diagnostics.append(
+                f"  '{segment_name}' -> writes label {label_value} (via {label_source}; "
+                f"GetLabelValue={segment.GetLabelValue()}, voxels={voxel_count})"
+            )
             if mask is None:
                 continue
             if mask.shape != output_array.shape:
@@ -1790,6 +1806,11 @@ class PediatricGliomaSegmentationBrowserLogic(ScriptedLoadableModuleLogic):
                     "refusing to export to avoid mislabeling."
                 )
             output_array[mask > 0] = label_value
+
+        print(
+            "[PediatricGliomaSegmentationBrowser] Export label mapping for "
+            f"{self.currentSession.display_name}:\n" + "\n".join(diagnostics)
+        )
 
         labelmap_node = slicer.modules.volumes.logic().CloneVolume(
             reference_volume_node, "PediatricGliomaSegmentationBrowserExport"
