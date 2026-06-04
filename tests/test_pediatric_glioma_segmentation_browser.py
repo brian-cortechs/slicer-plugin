@@ -200,6 +200,22 @@ class DiscoverSessionsTest(unittest.TestCase):
             "/output/folder/sub-00001_ses-000_space-orig_dseg.nii.gz",
         )
 
+    def test_segment_label_value_for_export_prefers_configured_name(self):
+        self.assertEqual(
+            self.module._segment_label_value_for_export(
+                "peritumoral edema",
+                2,
+            ),
+            4,
+        )
+
+    def test_segment_label_value_for_export_rejects_unconfigured_name(self):
+        with self.assertRaises(RuntimeError):
+            self.module._segment_label_value_for_export(
+                "unexpected segment",
+                7,
+            )
+
     def test_toggle_segmentation_visibility(self):
         class FakeDisplayNode:
             def __init__(self):

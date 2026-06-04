@@ -201,6 +201,23 @@ def _output_segmentation_path(output_seg_folder: str, session: SessionRecord) ->
     )
 
 
+def _configured_segment_name_to_label() -> dict:
+    return {
+        segment_name: label_value
+        for label_value, segment_name in SEGMENT_LABEL_NAMES.items()
+    }
+
+
+def _segment_label_value_for_export(segment_name: str, existing_label_value: int) -> int:
+    configured_label_value = _configured_segment_name_to_label().get(segment_name)
+    if configured_label_value is not None:
+        return configured_label_value
+    raise RuntimeError(
+        "Cannot determine export label value for segment "
+        f"'{segment_name}'. Add it to SEGMENT_LABEL_NAMES before exporting."
+    )
+
+
 def _available_editing_source_names(volume_names: List[str]) -> List[str]:
     return [
         volume_name
@@ -744,6 +761,12 @@ class PediatricGliomaSegmentationBrowserLogic(ScriptedLoadableModuleLogic):
         )
         try:
             reference_volume_node = self.currentVolumeNodesByName.get("T1post")
+            if not reference_volume_node and self.currentVolumeNodesByName:
+                reference_volume_node = next(
+                    iter(self.currentVolumeNodesByName.values())
+                )
+            if not reference_volume_node:
+                raise RuntimeError("No reference volume is available for export.")
             if reference_volume_node:
                 self.currentSegmentationNode.SetReferenceImageGeometryParameterFromVolumeNode(
                     reference_volume_node
@@ -757,12 +780,50 @@ class PediatricGliomaSegmentationBrowserLogic(ScriptedLoadableModuleLogic):
             if not success:
                 raise RuntimeError("Slicer failed to export the segmentation to labelmap.")
 
+            self._rewriteExportedLabelmapWithConfiguredLabels(
+                labelmap_node,
+                reference_volume_node,
+            )
             if not slicer.util.saveNode(labelmap_node, output_path):
                 raise RuntimeError(f"Slicer failed to save {output_path}")
         finally:
             slicer.mrmlScene.RemoveNode(labelmap_node)
 
         return output_path
+
+    def _rewriteExportedLabelmapWithConfiguredLabels(
+        self,
+        labelmap_node,
+        reference_volume_node,
+    ):
+        segmentation = self.currentSegmentationNode.GetSegmentation()
+        segment_ids = vtk.vtkStringArray()
+        segmentation.GetSegmentIDs(segment_ids)
+
+        exported_array = np.zeros_like(
+            slicer.util.arrayFromVolume(labelmap_node),
+            dtype=np.uint16,
+        )
+        for segment_index in range(segment_ids.GetNumberOfValues()):
+            segment_id = segment_ids.GetValue(segment_index)
+            segment = segmentation.GetSegment(segment_id)
+            if not segment:
+                continue
+
+            label_value = _segment_label_value_for_export(
+                segment.GetName(),
+                segment.GetLabelValue(),
+            )
+            segment_array = slicer.util.arrayFromSegmentBinaryLabelmap(
+                self.currentSegmentationNode,
+                segment_id,
+                reference_volume_node,
+            )
+            if segment_array is None:
+                continue
+            exported_array[segment_array != 0] = label_value
+
+        slicer.util.updateVolumeFromArray(labelmap_node, exported_array)
 
     def loadSession(self, session: SessionRecord):
         if not SLICER_AVAILABLE:

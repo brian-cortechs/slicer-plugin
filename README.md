@@ -43,6 +43,11 @@ The module is currently hard-coded to these dataset roots:
 - Adds an `Export segmentation` button that writes the current segmentation to
   `OUTPUT_SEG_FOLDER` as a `.nii.gz` file using the original segmentation
   filename, without a save confirmation dialog.
+- Rewrites the exported labelmap using the configured `SEGMENT_LABEL_NAMES`
+  mapping so saved integer labels stay correct even when some configured labels
+  are missing from the edited segmentation.
+- Fails export without writing anything if any segment name is not present in
+  `SEGMENT_LABEL_NAMES`.
 - Names the loaded segmentation node `glioma segmentation`.
 - Renames loaded image nodes to cleaner modality labels: `T1post`, `T1pre`,
   `FLAIR`, and `T2`.
