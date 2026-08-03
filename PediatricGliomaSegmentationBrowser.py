@@ -1581,7 +1581,12 @@ class PediatricGliomaSegmentationBrowserLogic(ScriptedLoadableModuleLogic):
         if session.editable_path:
             filename = os.path.basename(session.editable_path)
         else:
-            filename = f"{session.subject_id}_{session.session_id}_dseg.nii.gz"
+            # Segmenting a case that has no existing seg to start from. The name must
+            # still match the configured filename_regex, or the export is invisible to
+            # the review layers and to every downstream glob, which all expect
+            # `_space-orig_dseg`. This path is now common: with the review layers
+            # optional, the 63 unsegmented sessions are all editable from Empty.
+            filename = f"{session.subject_id}_{session.session_id}_space-orig_dseg.nii.gz"
         return os.path.join(
             editing.output_folder,
             session.subject_id,
