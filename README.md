@@ -7,8 +7,8 @@ configured images plus segmentation overlays in a linked 2x2 axial layout.
 
 It has two modes, and only one is active at a time:
 
-- **Review** — compare read-only segmentation layers (e.g. `dev`, `onq-2896`,
-  your own edits) and flip between them.
+- **Review** — compare read-only segmentation layers (the checked-in ground
+  truth and your own edits) and flip between them.
 - **Segment** — edit one segmentation with the embedded Segment Editor and
   export the result.
 
@@ -46,8 +46,8 @@ per-segment summary to the Python Console (`'<name>' -> writes label N ... voxel
 so you can confirm what was saved.
 
 > Note: ground-truth segmentations produced with the old plugin may already be
-> corrupted. For those cases the `dev` originals usually hold the correct labels —
-> see "Start from" below.
+> corrupted. Recovering one means loading a pre-edit copy of that case as a review
+> layer and starting from it; see "Start from" below.
 
 ## Review mode
 
@@ -66,7 +66,7 @@ Available when the config has an `editing` block. Switch the **Mode** dropdown t
 - **Start from** — choose what loads as your starting point for each case:
   - `Auto` — resume your previous export if one exists, else the edit source.
   - `Edit source` — the segmentation configured under `editing`.
-  - any review layer by name (e.g. `dev seg` for the correct originals).
+  - any review layer by name.
   - `Empty (blank)` — start from scratch.
   Changing this reloads the current case from the chosen source.
 - **Editing source** — the volume the Segment Editor paints/thresholds against
@@ -78,8 +78,8 @@ Available when the config has an `editing` block. Switch the **Mode** dropdown t
   preserving the `sub-XXXXX/ses-XXX/anat/...` structure. It never overwrites the
   source you loaded.
 
-To fix a case whose source is mislabeled, set **Start from → dev seg** (or
-whichever layer has the correct labels), adjust as needed, and export.
+To fix a case whose source is mislabeled, add a review layer pointing at a copy
+that has the correct labels, set **Start from** to it, adjust, and export.
 
 ## Config schema
 
@@ -94,9 +94,9 @@ whichever layer has the correct labels), adjust as needed, and export.
   ],
 
   "segmentations": [
-    { "segmentation_folders": "/path/to/ground-truth-segs-dev/*",
+    { "segmentation_folders": "/path/to/ground-truth-segs/*",
       "segmentation_subfolder": "ses-???/anat",
-      "display_name": "dev seg",
+      "display_name": "ground-truth-segs",
       "filename_regex": "^sub-[^_]+_ses-[^_]+_space-orig_dseg\\.nii\\.gz$",
       "visible": false,
       "display_type": "fill",
@@ -138,9 +138,8 @@ Notes:
   config.
 - **Keep review layers `"required": false`.** A required layer silently removes
   every case it doesn't cover, and the result looks identical to "that data
-  doesn't exist". Two separate instances of this bit us: `dev seg` /
-  `onq-2896 seg` only cover the original 257-case set, and `ground-truth-segs`
-  only covers the 346 sessions that have been segmented. With all four optional
+  doesn't exist". `ground-truth-segs` covers only the 346 sessions that have been
+  segmented, and `my edits` only the handful you have exported. With both optional
   the browser lists all 409 BIDS sessions; a case with no segmentation yet is
   still editable via **Start from → Empty**.
 - `filename_regex` is preferred for matching; `filename` is accepted as a
