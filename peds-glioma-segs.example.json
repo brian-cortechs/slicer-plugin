@@ -34,29 +34,56 @@
       "segments": [
         {
           "label": 1,
-          "name": "enhancing tissue",
-          "color": [255, 0, 0],
+          "name": "enhancing tumor",
+          "color": [
+            255,
+            255,
+            0
+          ],
           "visible": true
         },
         {
           "label": 2,
-          "name": "non-enhancing tumor core",
-          "color": [0, 255, 0],
+          "name": "nonenhancing tumor",
+          "color": [
+            255,
+            0,
+            0
+          ],
           "visible": true
         },
         {
           "label": 3,
           "name": "cystic component",
-          "color": [0, 0, 255],
+          "color": [
+            255,
+            140,
+            0
+          ],
           "visible": true
         },
         {
           "label": 4,
-          "name": "peritumoral edema",
-          "color": [255, 255, 0],
+          "name": "surrounding nonenhancing FLAIR hyperintensity",
+          "color": [
+            0,
+            255,
+            0
+          ],
+          "visible": true
+        },
+        {
+          "label": 5,
+          "name": "resection cavity",
+          "color": [
+            0,
+            255,
+            255
+          ],
           "visible": true
         }
-      ]
+      ],
+      "required": false
     },
     {
       "segmentation_folders": "/mnt/data/cortechs/repos/pediatric-glioma-segmentation/data/datasets/derivatives/ground-truth-segs-updated/*",
@@ -68,29 +95,56 @@
       "segments": [
         {
           "label": 1,
-          "name": "enhancing tissue",
-          "color": [255, 0, 0],
+          "name": "enhancing tumor",
+          "color": [
+            255,
+            255,
+            0
+          ],
           "visible": true
         },
         {
           "label": 2,
-          "name": "non-enhancing tumor core",
-          "color": [0, 255, 0],
+          "name": "nonenhancing tumor",
+          "color": [
+            255,
+            0,
+            0
+          ],
           "visible": true
         },
         {
           "label": 3,
           "name": "cystic component",
-          "color": [0, 0, 255],
+          "color": [
+            255,
+            140,
+            0
+          ],
           "visible": true
         },
         {
           "label": 4,
-          "name": "peritumoral edema",
-          "color": [255, 255, 0],
+          "name": "surrounding nonenhancing FLAIR hyperintensity",
+          "color": [
+            0,
+            255,
+            0
+          ],
+          "visible": true
+        },
+        {
+          "label": 5,
+          "name": "resection cavity",
+          "color": [
+            0,
+            255,
+            255
+          ],
           "visible": true
         }
-      ]
+      ],
+      "required": false
     },
     {
       "segmentation_folders": "/mnt/data/cortechs/repos/pediatric-glioma-segmentation/data/datasets/derivatives/ground-truth-segs/*",
@@ -100,11 +154,58 @@
       "visible": false,
       "display_type": "fill",
       "segments": [
-        {"label": 1, "name": "enhancing tissue", "color": [255, 0, 0], "visible": true},
-        {"label": 2, "name": "non-enhancing tumor core", "color": [0, 255, 0], "visible": true},
-        {"label": 3, "name": "cystic component", "color": [0, 0, 255], "visible": true},
-        {"label": 4, "name": "peritumoral edema", "color": [255, 255, 0], "visible": true}
-      ]
+        {
+          "label": 1,
+          "name": "enhancing tumor",
+          "color": [
+            255,
+            255,
+            0
+          ],
+          "visible": true
+        },
+        {
+          "label": 2,
+          "name": "nonenhancing tumor",
+          "color": [
+            255,
+            0,
+            0
+          ],
+          "visible": true
+        },
+        {
+          "label": 3,
+          "name": "cystic component",
+          "color": [
+            255,
+            140,
+            0
+          ],
+          "visible": true
+        },
+        {
+          "label": 4,
+          "name": "surrounding nonenhancing FLAIR hyperintensity",
+          "color": [
+            0,
+            255,
+            0
+          ],
+          "visible": true
+        },
+        {
+          "label": 5,
+          "name": "resection cavity",
+          "color": [
+            0,
+            255,
+            255
+          ],
+          "visible": true
+        }
+      ],
+      "required": false
     },
     {
       "segmentation_folders": "/mnt/data/cortechs/repos/pediatric-glioma-segmentation/data/datasets/derivatives/ground-truth-segs-zander/*",
@@ -115,10 +216,56 @@
       "display_type": "fill",
       "required": false,
       "segments": [
-        {"label": 1, "name": "enhancing tissue", "color": [255, 0, 0], "visible": true},
-        {"label": 2, "name": "non-enhancing tumor core", "color": [0, 255, 0], "visible": true},
-        {"label": 3, "name": "cystic component", "color": [0, 0, 255], "visible": true},
-        {"label": 4, "name": "peritumoral edema", "color": [255, 255, 0], "visible": true}
+        {
+          "label": 1,
+          "name": "enhancing tumor",
+          "color": [
+            255,
+            255,
+            0
+          ],
+          "visible": true
+        },
+        {
+          "label": 2,
+          "name": "nonenhancing tumor",
+          "color": [
+            255,
+            0,
+            0
+          ],
+          "visible": true
+        },
+        {
+          "label": 3,
+          "name": "cystic component",
+          "color": [
+            255,
+            140,
+            0
+          ],
+          "visible": true
+        },
+        {
+          "label": 4,
+          "name": "surrounding nonenhancing FLAIR hyperintensity",
+          "color": [
+            0,
+            255,
+            0
+          ],
+          "visible": true
+        },
+        {
+          "label": 5,
+          "name": "resection cavity",
+          "color": [
+            0,
+            255,
+            255
+          ],
+          "visible": true
+        }
       ]
     }
   ],
@@ -129,13 +276,69 @@
     "output_folder": "/mnt/data/cortechs/repos/pediatric-glioma-segmentation/data/datasets/derivatives/ground-truth-segs-zander",
     "display_name": "my edit",
     "display_type": "fill",
-    "editing_sources": ["T1post", "T1pre", "T1 subtraction", "FLAIR", "T2"],
-    "subtraction": {"display_name": "T1 subtraction", "minuend": "T1post", "subtrahend": "T1pre"},
+    "editing_sources": [
+      "T1post",
+      "T1pre",
+      "T1 subtraction",
+      "FLAIR",
+      "T2"
+    ],
+    "subtraction": {
+      "display_name": "T1 subtraction",
+      "minuend": "T1post",
+      "subtrahend": "T1pre"
+    },
     "segments": [
-      {"label": 1, "name": "enhancing tissue", "color": [255, 0, 0], "visible": true},
-      {"label": 2, "name": "non-enhancing tumor core", "color": [0, 255, 0], "visible": true},
-      {"label": 3, "name": "cystic component", "color": [0, 0, 255], "visible": true},
-      {"label": 4, "name": "peritumoral edema", "color": [255, 255, 0], "visible": true}
+      {
+        "label": 1,
+        "name": "enhancing tumor",
+        "color": [
+          255,
+          255,
+          0
+        ],
+        "visible": true
+      },
+      {
+        "label": 2,
+        "name": "nonenhancing tumor",
+        "color": [
+          255,
+          0,
+          0
+        ],
+        "visible": true
+      },
+      {
+        "label": 3,
+        "name": "cystic component",
+        "color": [
+          255,
+          140,
+          0
+        ],
+        "visible": true
+      },
+      {
+        "label": 4,
+        "name": "surrounding nonenhancing FLAIR hyperintensity",
+        "color": [
+          0,
+          255,
+          0
+        ],
+        "visible": true
+      },
+      {
+        "label": 5,
+        "name": "resection cavity",
+        "color": [
+          0,
+          255,
+          255
+        ],
+        "visible": true
+      }
     ]
   }
 }

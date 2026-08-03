@@ -102,10 +102,11 @@ whichever layer has the correct labels), adjust as needed, and export.
       "display_type": "fill",
       "required": false,
       "segments": [
-        { "label": 1, "name": "enhancing tissue",         "color": [255, 0, 0] },
-        { "label": 2, "name": "non-enhancing tumor core", "color": [0, 255, 0] },
-        { "label": 3, "name": "cystic component",         "color": [0, 0, 255] },
-        { "label": 4, "name": "peritumoral edema",        "color": [255, 255, 0] }
+        { "label": 1, "name": "enhancing tumor", "color": [255, 255, 0] },
+        { "label": 2, "name": "nonenhancing tumor", "color": [255, 0, 0] },
+        { "label": 3, "name": "cystic component", "color": [255, 140, 0] },
+        { "label": 4, "name": "surrounding nonenhancing FLAIR hyperintensity", "color": [0, 255, 0] },
+        { "label": 5, "name": "resection cavity", "color": [0, 255, 255] }
       ]
     }
   ],
@@ -120,10 +121,11 @@ whichever layer has the correct labels), adjust as needed, and export.
     "editing_sources": ["T1post", "T1pre", "T1 subtraction", "FLAIR", "T2"],
     "subtraction": { "display_name": "T1 subtraction", "minuend": "T1post", "subtrahend": "T1pre" },
     "segments": [
-      { "label": 1, "name": "enhancing tissue",         "color": [255, 0, 0] },
-      { "label": 2, "name": "non-enhancing tumor core", "color": [0, 255, 0] },
-      { "label": 3, "name": "cystic component",         "color": [0, 0, 255] },
-      { "label": 4, "name": "peritumoral edema",        "color": [255, 255, 0] }
+      { "label": 1, "name": "enhancing tumor", "color": [255, 255, 0] },
+      { "label": 2, "name": "nonenhancing tumor", "color": [255, 0, 0] },
+      { "label": 3, "name": "cystic component", "color": [255, 140, 0] },
+      { "label": 4, "name": "surrounding nonenhancing FLAIR hyperintensity", "color": [0, 255, 0] },
+      { "label": 5, "name": "resection cavity", "color": [0, 255, 255] }
     ]
   }
 }
@@ -134,10 +136,35 @@ Notes:
 - A session is kept only if it matches every image rule and every **required**
   segmentation rule exactly once. Omit the `editing` block for a review-only
   config.
+- **Keep review layers `"required": false`.** A required layer silently removes
+  every case it doesn't cover, and the result looks identical to "that data
+  doesn't exist". Two separate instances of this bit us: `dev seg` /
+  `onq-2896 seg` only cover the original 257-case set, and `ground-truth-segs`
+  only covers the 346 sessions that have been segmented. With all four optional
+  the browser lists all 409 BIDS sessions; a case with no segmentation yet is
+  still editable via **Start from → Empty**.
 - `filename_regex` is preferred for matching; `filename` is accepted as a
   glob-style fallback. `display_type` supports `fill` and `outline`.
 - `segments` defines the canonical label scheme — names here are what the export
   uses to assign integer labels, so keep them consistent across layers.
+- The canonical scheme is `derivatives/ground-truth-segs/dseg.tsv`:
+
+  | label | name | color |
+  |---|---|---|
+  | 1 | enhancing tumor (ET) | yellow |
+  | 2 | nonenhancing tumor (NET) | red |
+  | 3 | cystic component (CC) | orange |
+  | 4 | surrounding nonenhancing FLAIR hyperintensity (SNFH) | green |
+  | 5 | resection cavity (RC) | cyan |
+
+  SNFH was previously called "peritumoral edema" — same tissue, same integer,
+  renamed to match the adult `dseg.tsv` and BraTS wording. Label 5 is new: most
+  peds cases are pre-operative, but the Gradient Health cohort has post-operative
+  scans. No existing file uses 5, so adding it changes nothing already drawn.
+- Colors come from the shared palette used by the ml-dashboard
+  (`ml_dashboard/config/tumor_palette.py`), keyed by tissue, so a region looks the
+  same in both tools. They previously disagreed on labels 3 and 4 — cystic was blue
+  here and yellow there, edema the reverse — which made correct work look mislabeled.
 - The layout supports at most 4 displayed images at once.
 - See `peds-glioma-segs.example.json` for a complete working example.
 
