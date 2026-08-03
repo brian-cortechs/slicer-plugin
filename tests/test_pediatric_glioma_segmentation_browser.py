@@ -182,6 +182,20 @@ class DiscoverSessionsTest(unittest.TestCase):
             None,
         )
 
+    def test_export_label_resolves_by_name_and_rejects_unconfigured(self):
+        module = self._load_module()
+        segments = [
+            module.SegmentDefinition(label=1, name="enhancing tumor"),
+            module.SegmentDefinition(label=5, name="resection cavity"),
+        ]
+        # Name wins over segment order: the second entry must not resolve to 2.
+        self.assertEqual(
+            module._export_label_for_segment_name("resection cavity", segments),
+            5,
+        )
+        with self.assertRaises(RuntimeError):
+            module._export_label_for_segment_name("Segment_1", segments)
+
     def test_regex_prevents_t1pre_from_matching_t1post(self):
         module = self._load_module()
         t1post_regex = (

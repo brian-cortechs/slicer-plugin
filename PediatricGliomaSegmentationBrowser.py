@@ -109,6 +109,23 @@ class SessionRecord:
         return f"{self.subject_id} | {self.session_id}"
 
 
+def _export_label_for_segment_name(segment_name: str, segments) -> int:
+    """Canonical integer for a segment, resolved by name.
+
+    Raises rather than falling back to the segment's own GetLabelValue(): that value
+    is the unreliable source this whole mapping replaces, so a fallback would write
+    exactly the mislabel it guards against.
+    """
+    labels_by_name = {definition.name: definition.label for definition in segments}
+    if segment_name not in labels_by_name:
+        raise RuntimeError(
+            f"Segment '{segment_name}' is not in the configured label scheme "
+            f"({', '.join(sorted(labels_by_name))}); refusing to export. "
+            "Rename it to a configured segment or remove it."
+        )
+    return labels_by_name[segment_name]
+
+
 def _normalize_color(color_value):
     if color_value is None:
         return None
@@ -1823,13 +1840,8 @@ class PediatricGliomaSegmentationBrowserLogic(ScriptedLoadableModuleLogic):
             raise RuntimeError("No reference image volume is available for export.")
 
         # FIX: map each segment to its canonical label by NAME (exactly what is shown
-        # and selected in the Segment Editor), falling back to the segment's own
-        # LabelValue only if the name is not in the config. Then composite each
-        # segment's mask at that label -- order/empties cannot permute the output.
-        editing_label_by_name = {
-            segment_definition.name: segment_definition.label
-            for segment_definition in editing.segments
-        }
+        # and selected in the Segment Editor), then composite each segment's mask at
+        # that label -- order/empties cannot permute the output.
         reference_array = slicer.util.arrayFromVolume(reference_volume_node)
         output_array = np.zeros(reference_array.shape, dtype=np.int16)
 
@@ -1843,11 +1855,7 @@ class PediatricGliomaSegmentationBrowserLogic(ScriptedLoadableModuleLogic):
             if not segment:
                 continue
             segment_name = segment.GetName()
-            label_value = editing_label_by_name.get(segment_name)
-            label_source = "name"
-            if label_value is None:
-                label_value = int(segment.GetLabelValue())
-                label_source = "GetLabelValue"
+            label_value = _export_label_for_segment_name(segment_name, editing.segments)
             try:
                 mask = slicer.util.arrayFromSegmentBinaryLabelmap(
                     self.currentEditableNode, segment_id, reference_volume_node
@@ -1859,8 +1867,8 @@ class PediatricGliomaSegmentationBrowserLogic(ScriptedLoadableModuleLogic):
                 )
             voxel_count = int((mask > 0).sum()) if mask is not None else 0
             diagnostics.append(
-                f"  '{segment_name}' -> writes label {label_value} (via {label_source}; "
-                f"GetLabelValue={segment.GetLabelValue()}, voxels={voxel_count})"
+                f"  '{segment_name}' -> writes label {label_value} "
+                f"(GetLabelValue={segment.GetLabelValue()}, voxels={voxel_count})"
             )
             if mask is None:
                 continue

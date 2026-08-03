@@ -45,6 +45,12 @@ Slicer's internal bookkeeping or segment order. Each export also prints a
 per-segment summary to the Python Console (`'<name>' -> writes label N ... voxels=...`)
 so you can confirm what was saved.
 
+A segment whose name is not in the config's `segments` list aborts the export with
+nothing written — for example a segment you added by hand and left as `Segment_1`.
+Rename it to a configured region or delete it. There is deliberately no fallback to
+`GetLabelValue()`: that is the unreliable value this fix replaces, so falling back
+would write the mislabel it exists to prevent.
+
 > Note: ground-truth segmentations produced with the old plugin may already be
 > corrupted. Recovering one means loading a pre-edit copy of that case as a review
 > layer and starting from it; see "Start from" below.
