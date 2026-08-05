@@ -379,5 +379,45 @@ class DiscoverSessionsTest(unittest.TestCase):
         )
 
 
+class FakeSegmentation:
+    """Minimal vtkSegmentation stand-in that renumbers on separate, as Slicer does."""
+
+    def __init__(self, segment_ids):
+        self.segment_ids = list(segment_ids)
+        self.separated = []
+
+    def GetNumberOfSegments(self):
+        return len(self.segment_ids)
+
+    def GetNthSegmentID(self, index):
+        return self.segment_ids[index]
+
+    def SeparateSegmentLabelmap(self, segment_id):
+        self.separated.append(segment_id)
+        # Slicer may reorder/renumber segment IDs when a segment moves to its own
+        # layer; snapshotting IDs up front is what keeps the loop correct.
+        self.segment_ids.reverse()
+
+
+class SeparateSegmentLayersTest(unittest.TestCase):
+    def test_every_segment_separated_exactly_once(self):
+        module = load_module()
+        # An even count matters: with an odd one, re-reading the renumbered IDs each
+        # iteration still happens to touch every segment, so the bug would hide.
+        segmentation = FakeSegmentation(["a", "b", "c", "d"])
+
+        module._separate_segment_layers(segmentation)
+
+        self.assertEqual(segmentation.separated, ["a", "b", "c", "d"])
+
+    def test_empty_segmentation_is_a_noop(self):
+        module = load_module()
+        segmentation = FakeSegmentation([])
+
+        module._separate_segment_layers(segmentation)
+
+        self.assertEqual(segmentation.separated, [])
+
+
 if __name__ == "__main__":
     unittest.main()

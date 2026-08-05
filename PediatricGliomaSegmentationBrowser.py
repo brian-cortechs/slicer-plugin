@@ -126,6 +126,25 @@ def _export_label_for_segment_name(segment_name: str, segments) -> int:
     return labels_by_name[segment_name]
 
 
+def _separate_segment_layers(segmentation):
+    """Move every segment onto its own binary labelmap layer.
+
+    A segmentation read from a single multi-label file arrives with all segments packed
+    onto one shared layer, which stores exactly one value per voxel. Editing a segment
+    there overwrites any segment it grows into, and the overwritten value is destroyed
+    outright -- nnInteractive's undo only clears its own label, so the loss shows up as a
+    hole and is unrecoverable. Prompting requires one layer per segment.
+
+    IDs are collected before the loop because separating a segment can renumber them.
+    """
+    segment_ids = [
+        segmentation.GetNthSegmentID(segment_index)
+        for segment_index in range(segmentation.GetNumberOfSegments())
+    ]
+    for segment_id in segment_ids:
+        segmentation.SeparateSegmentLabelmap(segment_id)
+
+
 def _normalize_color(color_value):
     if color_value is None:
         return None
@@ -1664,6 +1683,7 @@ class PediatricGliomaSegmentationBrowserLogic(ScriptedLoadableModuleLogic):
             self._trackNode(segmentation_node)
 
         self._applyCanonicalSegments(segmentation_node, editing)
+        _separate_segment_layers(segmentation_node.GetSegmentation())
         self._configureEditableDisplay(segmentation_node, editing)
         return segmentation_node
 
