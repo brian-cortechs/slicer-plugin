@@ -1,0 +1,222 @@
+{
+  "image_folders": "/mnt/data/cortechs/repos/pediatric-glioma-segmentation/data/datasets/sourcedata/raw/*",
+  "image_subfolder": "ses-???/anat",
+  "images": [
+    {
+      "display_name": "T1post",
+      "filename_regex": "^sub-[^_]+_ses-[^_]+_ce-gadolinium_T1w\\.nii\\.gz$",
+      "display": true
+    },
+    {
+      "display_name": "T1pre",
+      "filename_regex": "^sub-[^_]+_ses-[^_]+_T1w\\.nii\\.gz$",
+      "display": true
+    },
+    {
+      "display_name": "FLAIR",
+      "filename_regex": "^sub-[^_]+_ses-[^_]+_FLAIR\\.nii\\.gz$",
+      "display": true
+    },
+    {
+      "display_name": "T2",
+      "filename_regex": "^sub-[^_]+_ses-[^_]+_T2w?\\.nii\\.gz$",
+      "display": true
+    }
+  ],
+  "segmentations": [
+    {
+      "segmentation_folders": "/mnt/data/cortechs/repos/pediatric-glioma-segmentation/data/datasets/derivatives/ground-truth-segs/*",
+      "segmentation_subfolder": "ses-???/anat",
+      "display_name": "ground-truth-segs",
+      "filename_regex": "^sub-[^_]+_ses-[^_]+_space-orig_dseg\\.nii\\.gz$",
+      "visible": false,
+      "display_type": "fill",
+      "segments": [
+        {
+          "label": 1,
+          "name": "enhancing tumor",
+          "color": [
+            255,
+            255,
+            0
+          ],
+          "visible": true
+        },
+        {
+          "label": 2,
+          "name": "nonenhancing tumor",
+          "color": [
+            255,
+            0,
+            0
+          ],
+          "visible": true
+        },
+        {
+          "label": 3,
+          "name": "cystic component",
+          "color": [
+            255,
+            140,
+            0
+          ],
+          "visible": true
+        },
+        {
+          "label": 4,
+          "name": "surrounding nonenhancing FLAIR hyperintensity",
+          "color": [
+            0,
+            255,
+            0
+          ],
+          "visible": true
+        },
+        {
+          "label": 5,
+          "name": "resection cavity",
+          "color": [
+            0,
+            255,
+            255
+          ],
+          "visible": true
+        }
+      ],
+      "required": false
+    },
+    {
+      "segmentation_folders": "/mnt/data/cortechs/repos/pediatric-glioma-segmentation/data/datasets/derivatives/ground-truth-segs-zander/*",
+      "segmentation_subfolder": "ses-???/anat",
+      "display_name": "my edits",
+      "filename_regex": "^sub-[^_]+_ses-[^_]+_space-orig_dseg\\.nii\\.gz$",
+      "visible": false,
+      "display_type": "fill",
+      "required": false,
+      "segments": [
+        {
+          "label": 1,
+          "name": "enhancing tumor",
+          "color": [
+            255,
+            255,
+            0
+          ],
+          "visible": true
+        },
+        {
+          "label": 2,
+          "name": "nonenhancing tumor",
+          "color": [
+            255,
+            0,
+            0
+          ],
+          "visible": true
+        },
+        {
+          "label": 3,
+          "name": "cystic component",
+          "color": [
+            255,
+            140,
+            0
+          ],
+          "visible": true
+        },
+        {
+          "label": 4,
+          "name": "surrounding nonenhancing FLAIR hyperintensity",
+          "color": [
+            0,
+            255,
+            0
+          ],
+          "visible": true
+        },
+        {
+          "label": 5,
+          "name": "resection cavity",
+          "color": [
+            0,
+            255,
+            255
+          ],
+          "visible": true
+        }
+      ]
+    }
+  ],
+  "editing": {
+    "segmentation_folders": "/mnt/data/cortechs/repos/pediatric-glioma-segmentation/data/datasets/derivatives/ground-truth-segs/*",
+    "segmentation_subfolder": "ses-???/anat",
+    "filename_regex": "^sub-[^_]+_ses-[^_]+_space-orig_dseg\\.nii\\.gz$",
+    "output_folder": "/mnt/data/cortechs/repos/pediatric-glioma-segmentation/data/datasets/derivatives/ground-truth-segs-zander",
+    "display_name": "my edit",
+    "display_type": "fill",
+    "editing_sources": [
+      "T1post",
+      "T1pre",
+      "T1 subtraction",
+      "FLAIR",
+      "T2"
+    ],
+    "subtraction": {
+      "display_name": "T1 subtraction",
+      "minuend": "T1post",
+      "subtrahend": "T1pre"
+    },
+    "segments": [
+      {
+        "label": 1,
+        "name": "enhancing tumor",
+        "color": [
+          255,
+          255,
+          0
+        ],
+        "visible": true
+      },
+      {
+        "label": 2,
+        "name": "nonenhancing tumor",
+        "color": [
+          255,
+          0,
+          0
+        ],
+        "visible": true
+      },
+      {
+        "label": 3,
+        "name": "cystic component",
+        "color": [
+          255,
+          140,
+          0
+        ],
+        "visible": true
+      },
+      {
+        "label": 4,
+        "name": "surrounding nonenhancing FLAIR hyperintensity",
+        "color": [
+          0,
+          255,
+          0
+        ],
+        "visible": true
+      },
+      {
+        "label": 5,
+        "name": "resection cavity",
+        "color": [
+          0,
+          255,
+          255
+        ],
+        "visible": true
+      }
+    ]
+  }
+}

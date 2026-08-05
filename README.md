@@ -1,97 +1,189 @@
-# Pediatric Glioma Segmentation Browser
+# Segmentation Browser
 
-This repository contains a first-pass Python scripted module for 3D Slicer:
-`PediatricGliomaSegmentationBrowser.py`.
+`PediatricGliomaSegmentationBrowser.py` is a config-driven 3D Slicer module for
+reviewing **and** editing pediatric glioma segmentations. It loads a config
+JSON, discovers valid sessions by matching BIDS-style filenames, and shows the
+configured images plus segmentation overlays in a linked 2x2 axial layout.
 
-The module is currently hard-coded to these dataset roots:
+It has two modes, and only one is active at a time:
 
-- Images: `/Users/brian/repos/pediatric-glioma-segmentation/data/datasets/derivatives/preprocessed/images`
-- Segmentations: `/Users/brian/repos/pediatric-glioma-segmentation/data/datasets/derivatives/preprocessed/ground-truth-segs`
-- Participants CSV: `/Users/brian/repos/slicer-plugin/pediatric-glioma-participants.csv`
-- Output folder: `/Users/brian/repos/pediatric-glioma-segmentation/exported-segmentations`
-- Assignee filter: `YOUR_INITIALS = "BK"`
+- **Review** — compare read-only segmentation layers (the checked-in ground
+  truth and your own edits) and flip between them.
+- **Segment** — edit one segmentation with the embedded Segment Editor and
+  export the result.
 
-## What it does
+## Per-user setup (no more personal branches)
 
-- Reads `pediatric-glioma-participants.csv` and only considers rows whose
-  `assignee` matches `YOUR_INITIALS`.
-- Uses each selected row's `participant_id` and `session_id` to construct the
-  image and segmentation paths.
-- Keeps only sessions with exactly 4 image files in `anat/`.
-- Keeps only sessions with exactly 1 segmentation file containing `_dseg` in the
-  matching segmentation `anat/` folder.
-- Lists all valid sessions in a dropdown. Adds `Previous` and `Next` buttons for quick case-to-case navigation.
-- When you select a session, unloads the prior case loaded by this module, then
-  loads the 4 images and the segmentation for the selected session.
-- Switches Slicer into a custom 2x2 linked axial slice layout so the 4 loaded
-  modalities are visible side by side.
-- Displays `T1post`, `T1pre`, `FLAIR`, and a derived `T1post - T1pre`
-  subtraction image.
-- If `T1post` and `T1pre` do not have matching shape and geometry, shows an
-  alert and falls back to displaying `T2` instead of the subtraction image.
-- Links the slice views so pan, zoom, and slice scrolling stay synchronized.
-- Lets you choose an explicit `Editing source` volume for Segment Editor tools.
-- Shows the chosen editing source as a foreground overlay in all four slice
-  views so threshold-based editing is consistent while all backgrounds remain
-  visible.
-- Adds a global `Shift+V` shortcut to toggle the current segmentation
-  visibility while editing.
-- Uses the top-level `DISPLAYED_VIEW_VOLUME_NAMES` constant to control which
-  volumes appear in the four slice views and in what order.
-- Embeds the full Segment Editor pane directly in this module so you can edit
-  without switching modules.
-- Adds an `Export segmentation` button that writes the current segmentation to
-  `OUTPUT_SEG_FOLDER` as a `.nii.gz` file using the original segmentation
-  filename, without a save confirmation dialog.
-- Rewrites the exported labelmap using the configured `SEGMENT_LABEL_NAMES`
-  mapping so saved integer labels stay correct even when some configured labels
-  are missing from the edited segmentation.
-- Fails export without writing anything if any segment name is not present in
-  `SEGMENT_LABEL_NAMES`.
-- Names the loaded segmentation node `glioma segmentation`.
-- Renames loaded image nodes to cleaner modality labels: `T1post`, `T1pre`,
-  `FLAIR`, and `T2`.
-- Turns pixel interpolation off for the loaded image displays.
-- Automatically activates the window/level mouse tool after loading a case.
-- Tries to point Segment Editor at the loaded segmentation and a preferred edit
-  volume (`T1post` first, then `T1pre`).
+Everyone uses the same code; you point it at your own paths with your own config
+JSON. **You no longer need a personal branch with hard-coded paths.**
 
-## How to use it in Slicer
+1. Copy the template `peds-glioma-segs.example.json` to a local config, e.g.
+   `peds-glioma-segs.json` (or `something.local.json`). These names are
+   git-ignored, so your personal paths never get committed.
+2. Edit the paths in your copy for your machine (image folder, segmentation
+   folders, and `output_folder`).
+3. In Slicer, `Edit > Application Settings > Modules`, add the path to this repo
+   under `Additional module paths`, then restart Slicer.
+4. Open **Segmentation Browser**. It auto-loads `peds-glioma-segs.json` from the
+   repo folder if present; otherwise click **Load config JSON** and pick yours.
 
-1. Open 3D Slicer.
-2. Go to `Edit > Application Settings > Modules`.
-3. Add `/Users/brian/repos/slicer-plugin` to `Additional module paths`.
-4. Restart Slicer or click `Reload and Test`.
-5. Open the `Pediatric Glioma Segmentation Browser` module.
-6. Pick a session from the dropdown or use `Previous` / `Next`.
-7. Choose an `Editing source` if you want Segment Editor tools such as
-   `Threshold`, or `Paint` with masking, to operate from a specific image.
-8. Adjust `Edit overlay` opacity if you want the editing source to be more or
-   less visible across all views.
-9. Press `Shift+V` at any time to toggle all loaded segments on or off.
-10. Click `Export segmentation` to write the current edited segmentation to the
-    configured output folder.
+## The label-swapping fix (why exports are now correct)
 
-The windowing tool will be automatically selected after each case load.
+The previous editing plugin sometimes saved segments under the **wrong label**
+(e.g. a region you drew as "non-enhancing tumor core" got saved as "enhancing").
+Two root causes:
+
+1. The old export wrote integer labels by **segment order**, not by the segment's
+   meaning. Any case missing one of the four labels got its labels permuted.
+2. Slicer's per-segment `GetLabelValue()` is itself unreliable after editing — a
+   segment holding the tumor could still report value `1`.
+
+The current export fixes this by writing each region's integer from the segment's
+**name**, matched against the canonical `segments` list in your config. So a
+segment named `non-enhancing tumor core` always saves as label `2`, regardless of
+Slicer's internal bookkeeping or segment order. Each export also prints a
+per-segment summary to the Python Console (`'<name>' -> writes label N ... voxels=...`)
+so you can confirm what was saved.
+
+A segment whose name is not in the config's `segments` list aborts the export with
+nothing written — for example a segment you added by hand and left as `Segment_1`.
+Rename it to a configured region or delete it. There is deliberately no fallback to
+`GetLabelValue()`: that is the unreliable value this fix replaces, so falling back
+would write the mislabel it exists to prevent.
+
+> Note: ground-truth segmentations produced with the old plugin may already be
+> corrupted. Recovering one means loading a pre-edit copy of that case as a review
+> layer and starting from it; see "Start from" below.
+
+## Review mode
+
+- Pick a session from the dropdown, or use `Previous` / `Next`.
+- Comparison layers are listed in the config under `segmentations`. Use `[` and
+  `]` to cycle backward/forward through them (only one shown at a time), and
+  `Shift+V` to toggle the current layer on/off.
+- Layers can be marked `"required": false` so a case still appears even if that
+  layer is missing (e.g. your edits, which only exist for cases you've exported).
+
+## Segment mode
+
+Available when the config has an `editing` block. Switch the **Mode** dropdown to
+**Segment** to reveal the Segmentation panel:
+
+- **Start from** — choose what loads as your starting point for each case:
+  - `Auto` — resume your previous export if one exists, else the edit source.
+  - `Edit source` — the segmentation configured under `editing`.
+  - any review layer by name.
+  - `Empty (blank)` — start from scratch.
+  Changing this reloads the current case from the chosen source.
+- **Editing source** — the volume the Segment Editor paints/thresholds against
+  (also shown as an overlay, controlled by the **Edit overlay** opacity slider).
+  Includes a computed `T1 subtraction` if configured.
+- Edit with the embedded **Segment Editor**. `Ctrl+Z` / `Ctrl+Y` undo/redo, and
+  `Shift+V` toggles the editable segmentation's visibility.
+- **Export segmentation** writes the result to the configured `output_folder`,
+  preserving the `sub-XXXXX/ses-XXX/anat/...` structure. It never overwrites the
+  source you loaded.
+
+To fix a case whose source is mislabeled, add a review layer pointing at a copy
+that has the correct labels, set **Start from** to it, adjust, and export.
+
+## Config schema
+
+```jsonc
+{
+  "image_folders": "/path/to/images/*",
+  "image_subfolder": "ses-???/anat",
+  "images": [
+    { "display_name": "T1post",
+      "filename_regex": "^sub-[^_]+_ses-[^_]+_ce-gadolinium_T1w\\.nii\\.gz$",
+      "display": true }
+  ],
+
+  "segmentations": [
+    { "segmentation_folders": "/path/to/ground-truth-segs/*",
+      "segmentation_subfolder": "ses-???/anat",
+      "display_name": "ground-truth-segs",
+      "filename_regex": "^sub-[^_]+_ses-[^_]+_space-orig_dseg\\.nii\\.gz$",
+      "visible": false,
+      "display_type": "fill",
+      "required": false,
+      "segments": [
+        { "label": 1, "name": "enhancing tumor", "color": [255, 255, 0] },
+        { "label": 2, "name": "nonenhancing tumor", "color": [255, 0, 0] },
+        { "label": 3, "name": "cystic component", "color": [255, 140, 0] },
+        { "label": 4, "name": "surrounding nonenhancing FLAIR hyperintensity", "color": [0, 255, 0] },
+        { "label": 5, "name": "resection cavity", "color": [0, 255, 255] }
+      ]
+    }
+  ],
+
+  "editing": {
+    "segmentation_folders": "/path/to/ground-truth-segs/*",
+    "segmentation_subfolder": "ses-???/anat",
+    "filename_regex": "^sub-[^_]+_ses-[^_]+_space-orig_dseg\\.nii\\.gz$",
+    "output_folder": "/path/to/your-edited-segs",
+    "display_name": "my edit",
+    "display_type": "fill",
+    "editing_sources": ["T1post", "T1pre", "T1 subtraction", "FLAIR", "T2"],
+    "subtraction": { "display_name": "T1 subtraction", "minuend": "T1post", "subtrahend": "T1pre" },
+    "segments": [
+      { "label": 1, "name": "enhancing tumor", "color": [255, 255, 0] },
+      { "label": 2, "name": "nonenhancing tumor", "color": [255, 0, 0] },
+      { "label": 3, "name": "cystic component", "color": [255, 140, 0] },
+      { "label": 4, "name": "surrounding nonenhancing FLAIR hyperintensity", "color": [0, 255, 0] },
+      { "label": 5, "name": "resection cavity", "color": [0, 255, 255] }
+    ]
+  }
+}
+```
+
+Notes:
+
+- A session is kept only if it matches every image rule and every **required**
+  segmentation rule exactly once. Omit the `editing` block for a review-only
+  config.
+- **Keep review layers `"required": false`.** A required layer silently removes
+  every case it doesn't cover, and the result looks identical to "that data
+  doesn't exist". `ground-truth-segs` covers only the 346 sessions that have been
+  segmented, and `my edits` only the handful you have exported. With both optional
+  the browser lists all 409 BIDS sessions; a case with no segmentation yet is
+  still editable via **Start from → Empty**.
+- `filename_regex` is preferred for matching; `filename` is accepted as a
+  glob-style fallback. `display_type` supports `fill` and `outline`.
+- `segments` defines the canonical label scheme — names here are what the export
+  uses to assign integer labels, so keep them consistent across layers.
+- The canonical scheme is `derivatives/ground-truth-segs/dseg.tsv`:
+
+  | label | name | color |
+  |---|---|---|
+  | 1 | enhancing tumor (ET) | yellow |
+  | 2 | nonenhancing tumor (NET) | red |
+  | 3 | cystic component (CC) | orange |
+  | 4 | surrounding nonenhancing FLAIR hyperintensity (SNFH) | green |
+  | 5 | resection cavity (RC) | cyan |
+
+  SNFH was previously called "peritumoral edema" — same tissue, same integer,
+  renamed to match the adult `dseg.tsv` and BraTS wording. Label 5 is new: most
+  peds cases are pre-operative, but the Gradient Health cohort has post-operative
+  scans. No existing file uses 5, so adding it changes nothing already drawn.
+- Colors come from the shared palette used by the ml-dashboard
+  (`ml_dashboard/config/tumor_palette.py`), keyed by tissue, so a region looks the
+  same in both tools. They previously disagreed on labels 3 and 4 — cystic was blue
+  here and yellow there, edema the reverse — which made correct work look mislabeled.
+- The layout supports at most 4 displayed images at once.
+- See `peds-glioma-segs.example.json` for a complete working example.
 
 ## Reload during development
 
 To reload the scripted module without restarting Slicer:
 
-1. Open `Edit > Application Settings > Developer`.
-2. Turn on `Developer mode`.
-3. Reopen `Pediatric Glioma Segmentation Browser`.
-4. Click the module's `Reload` button.
-
-You can also reload it from the Python interactor:
+1. `Edit > Application Settings > Developer`, turn on **Developer mode**.
+2. Reopen **Segmentation Browser** and click the module's **Reload** button, or
+   run in the Python interactor:
 
 ```python
 slicer.util.reloadScriptedModule("PediatricGliomaSegmentationBrowser")
 ```
 
-## Notes
-
-- Switching sessions removes the previously loaded nodes that were created by this
-  module from the scene.
-- This version focuses only on dataset discovery, loading, and rapid case
-  switching.
+Editing UI is established from the active config when the module loads. If you
+switch to a config with/without an `editing` block, reopen the module.
