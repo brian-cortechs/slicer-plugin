@@ -1,189 +1,135 @@
-# Segmentation Browser
+# BIDS Segmentation Browser
 
-`PediatricGliomaSegmentationBrowser.py` is a config-driven 3D Slicer module for
-reviewing **and** editing pediatric glioma segmentations. It loads a config
-JSON, discovers valid sessions by matching BIDS-style filenames, and shows the
-configured images plus segmentation overlays in a linked 2x2 axial layout.
+`BidsSegmentationBrowser.py` is a 3D Slicer module for browsing BIDS-formatted
+MRI cases and creating segmentations with **nnInteractive**.
 
-It has two modes, and only one is active at a time:
+## Features
 
-- **Review** — compare read-only segmentation layers (the checked-in ground
-  truth and your own edits) and flip between them.
-- **Segment** — edit one segmentation with the embedded Segment Editor and
-  export the result.
+- Pick an **input folder** (BIDS images) and an **output folder** (saved segs)
+  before case browsing is enabled
+- Discover `sub-*/ses-*` cases that contain one or more NIfTI files
+- On case open:
+  - Load available modalities (`T1post`, `T1pre`, `FLAIR`, `T2`, …)
+  - Compute `T1sub = T1post - T1pre` when both exist and share the same shape
+    (otherwise warn and skip)
+  - Show **one** volume in a single axial Red view, interpolation **off**
+    (preference: T1post → T1pre → any)
+  - Create a new segmentation, or resume one already saved in the output folder
+  - Bind that segmentation + displayed volume as the nnInteractive source
+- Embed the nnInteractive UI (including its Segment Editor tools) in the module
+  panel
+- Auto-save the segmentation to the output folder (BIDS layout) when switching
+  cases; also **Save segmentation** manually
 
-## Per-user setup (no more personal branches)
+## Install
 
-Everyone uses the same code; you point it at your own paths with your own config
-JSON. **You no longer need a personal branch with hard-coded paths.**
+1. Install the [nnInteractive](https://github.com/MIC-DKFZ/nnInteractive) /
+   `SlicerNNInteractive` extension in Slicer (Extension Manager), and complete
+   its first-run setup.
+2. `Edit > Application Settings > Modules`, add this repo path under
+   **Additional module paths**, restart Slicer.
+3. Open **BIDS Segmentation Browser**.
 
-1. Copy the template `peds-glioma-segs.example.json` to a local config, e.g.
-   `peds-glioma-segs.json` (or `something.local.json`). These names are
-   git-ignored, so your personal paths never get committed.
-2. Edit the paths in your copy for your machine (image folder, segmentation
-   folders, and `output_folder`).
-3. In Slicer, `Edit > Application Settings > Modules`, add the path to this repo
-   under `Additional module paths`, then restart Slicer.
-4. Open **Segmentation Browser**. It auto-loads `peds-glioma-segs.json` from the
-   repo folder if present; otherwise click **Load config JSON** and pick yours.
+## nnInteractive server (Docker)
 
-## The label-swapping fix (why exports are now correct)
+This browser embeds the nnInteractive UI and expects a running inference
+backend. Remote mode against a local GPU container is the usual setup.
 
-The previous editing plugin sometimes saved segments under the **wrong label**
-(e.g. a region you drew as "non-enhancing tumor core" got saved as "enhancing").
-Two root causes:
+Start the official server (NVIDIA Container Toolkit required):
 
-1. The old export wrote integer labels by **segment order**, not by the segment's
-   meaning. Any case missing one of the four labels got its labels permuted.
-2. Slicer's per-segment `GetLabelValue()` is itself unreliable after editing — a
-   segment holding the tumor could still report value `1`.
-
-The current export fixes this by writing each region's integer from the segment's
-**name**, matched against the canonical `segments` list in your config. So a
-segment named `non-enhancing tumor core` always saves as label `2`, regardless of
-Slicer's internal bookkeeping or segment order. Each export also prints a
-per-segment summary to the Python Console (`'<name>' -> writes label N ... voxels=...`)
-so you can confirm what was saved.
-
-A segment whose name is not in the config's `segments` list aborts the export with
-nothing written — for example a segment you added by hand and left as `Segment_1`.
-Rename it to a configured region or delete it. There is deliberately no fallback to
-`GetLabelValue()`: that is the unreliable value this fix replaces, so falling back
-would write the mislabel it exists to prevent.
-
-> Note: ground-truth segmentations produced with the old plugin may already be
-> corrupted. Recovering one means loading a pre-edit copy of that case as a review
-> layer and starting from it; see "Start from" below.
-
-## Review mode
-
-- Pick a session from the dropdown, or use `Previous` / `Next`.
-- Comparison layers are listed in the config under `segmentations`. Use `[` and
-  `]` to cycle backward/forward through them (only one shown at a time), and
-  `Shift+V` to toggle the current layer on/off.
-- Layers can be marked `"required": false` so a case still appears even if that
-  layer is missing (e.g. your edits, which only exist for cases you've exported).
-
-## Segment mode
-
-Available when the config has an `editing` block. Switch the **Mode** dropdown to
-**Segment** to reveal the Segmentation panel:
-
-- **Start from** — choose what loads as your starting point for each case:
-  - `Auto` — resume your previous export if one exists, else the edit source.
-  - `Edit source` — the segmentation configured under `editing`.
-  - any review layer by name.
-  - `Empty (blank)` — start from scratch.
-  Changing this reloads the current case from the chosen source.
-- **Editing source** — the volume the Segment Editor paints/thresholds against
-  (also shown as an overlay, controlled by the **Edit overlay** opacity slider).
-  Includes a computed `T1 subtraction` if configured.
-- Edit with the embedded **Segment Editor**. `Ctrl+Z` / `Ctrl+Y` undo/redo, and
-  `Shift+V` toggles the editable segmentation's visibility.
-- **Export segmentation** writes the result to the configured `output_folder`,
-  preserving the `sub-XXXXX/ses-XXX/anat/...` structure. It never overwrites the
-  source you loaded.
-
-To fix a case whose source is mislabeled, add a review layer pointing at a copy
-that has the correct labels, set **Start from** to it, adjust, and export.
-
-## Config schema
-
-```jsonc
-{
-  "image_folders": "/path/to/images/*",
-  "image_subfolder": "ses-???/anat",
-  "images": [
-    { "display_name": "T1post",
-      "filename_regex": "^sub-[^_]+_ses-[^_]+_ce-gadolinium_T1w\\.nii\\.gz$",
-      "display": true }
-  ],
-
-  "segmentations": [
-    { "segmentation_folders": "/path/to/ground-truth-segs/*",
-      "segmentation_subfolder": "ses-???/anat",
-      "display_name": "ground-truth-segs",
-      "filename_regex": "^sub-[^_]+_ses-[^_]+_space-orig_dseg\\.nii\\.gz$",
-      "visible": false,
-      "display_type": "fill",
-      "required": false,
-      "segments": [
-        { "label": 1, "name": "enhancing tumor", "color": [255, 255, 0] },
-        { "label": 2, "name": "nonenhancing tumor", "color": [255, 0, 0] },
-        { "label": 3, "name": "cystic component", "color": [255, 140, 0] },
-        { "label": 4, "name": "surrounding nonenhancing FLAIR hyperintensity", "color": [0, 255, 0] },
-        { "label": 5, "name": "resection cavity", "color": [0, 255, 255] }
-      ]
-    }
-  ],
-
-  "editing": {
-    "segmentation_folders": "/path/to/ground-truth-segs/*",
-    "segmentation_subfolder": "ses-???/anat",
-    "filename_regex": "^sub-[^_]+_ses-[^_]+_space-orig_dseg\\.nii\\.gz$",
-    "output_folder": "/path/to/your-edited-segs",
-    "display_name": "my edit",
-    "display_type": "fill",
-    "editing_sources": ["T1post", "T1pre", "T1 subtraction", "FLAIR", "T2"],
-    "subtraction": { "display_name": "T1 subtraction", "minuend": "T1post", "subtrahend": "T1pre" },
-    "segments": [
-      { "label": 1, "name": "enhancing tumor", "color": [255, 255, 0] },
-      { "label": 2, "name": "nonenhancing tumor", "color": [255, 0, 0] },
-      { "label": 3, "name": "cystic component", "color": [255, 140, 0] },
-      { "label": 4, "name": "surrounding nonenhancing FLAIR hyperintensity", "color": [0, 255, 0] },
-      { "label": 5, "name": "resection cavity", "color": [0, 255, 255] }
-    ]
-  }
-}
+```bash
+docker run --gpus all --runtime=nvidia -p 1527:1527 \
+  ghcr.io/mic-dkfz/nninteractive-server:latest
 ```
 
-Notes:
+The server listens on `http://localhost:1527`. With no
+`NN_INTERACTIVE_API_KEY` set, the server is unauthenticated — leave the API key
+field empty in Slicer. To require a key instead:
 
-- A session is kept only if it matches every image rule and every **required**
-  segmentation rule exactly once. Omit the `editing` block for a review-only
-  config.
-- **Keep review layers `"required": false`.** A required layer silently removes
-  every case it doesn't cover, and the result looks identical to "that data
-  doesn't exist". `ground-truth-segs` covers only the 346 sessions that have been
-  segmented, and `my edits` only the handful you have exported. With both optional
-  the browser lists all 409 BIDS sessions; a case with no segmentation yet is
-  still editable via **Start from → Empty**.
-- `filename_regex` is preferred for matching; `filename` is accepted as a
-  glob-style fallback. `display_type` supports `fill` and `outline`.
-- `segments` defines the canonical label scheme — names here are what the export
-  uses to assign integer labels, so keep them consistent across layers.
-- The canonical scheme is `derivatives/ground-truth-segs/dseg.tsv`:
+```bash
+docker run --gpus all --runtime=nvidia -p 1527:1527 \
+  -e NN_INTERACTIVE_API_KEY="$(openssl rand -hex 32)" \
+  ghcr.io/mic-dkfz/nninteractive-server:latest
+```
 
-  | label | name | color |
-  |---|---|---|
-  | 1 | enhancing tumor (ET) | yellow |
-  | 2 | nonenhancing tumor (NET) | red |
-  | 3 | cystic component (CC) | orange |
-  | 4 | surrounding nonenhancing FLAIR hyperintensity (SNFH) | green |
-  | 5 | resection cavity (RC) | cyan |
+### Connect from Slicer
 
-  SNFH was previously called "peritumoral edema" — same tissue, same integer,
-  renamed to match the adult `dseg.tsv` and BraTS wording. Label 5 is new: most
-  peds cases are pre-operative, but the Gradient Health cohort has post-operative
-  scans. No existing file uses 5, so adding it changes nothing already drawn.
-- Colors come from the shared palette used by the ml-dashboard
-  (`ml_dashboard/config/tumor_palette.py`), keyed by tissue, so a region looks the
-  same in both tools. They previously disagreed on labels 3 and 4 — cystic was blue
-  here and yellow there, edema the reverse — which made correct work look mislabeled.
-- The layout supports at most 4 displayed images at once.
-- See `peds-glioma-segs.example.json` for a complete working example.
+1. Open **BIDS Segmentation Browser** (or the standalone **nnInteractive**
+   module) and wait for a case/volume to load.
+2. In the embedded nnInteractive **Configuration** tab:
+   - Mode: **Remote**
+   - Server URL: `http://localhost:1527`
+   - API key: leave blank (unless you started the container with a key)
+   - Optionally click **Test connection**
+3. Switch to the **nnInteractive Prompts** tab and click **Initialize**.
+   This connects to the container and uploads the current image; prompt tools
+   stay disabled until it finishes. The button then shows **Uninitialize**.
+
+Re-click **Initialize** after the container restarts, or after changing the
+URL / key / mode.
+
+## Usage
+
+1. Set **Input folder** to a BIDS tree of images, e.g.
+   `.../preprocessed-niftis` with `sub-*/ses-*/anat/*.nii.gz`.
+2. Set **Output folder** to where segmentations should be written.
+3. Start the nnInteractive container and Initialize (see above).
+4. Pick a case (or Previous / Next) and segment with nnInteractive.
+5. Switch cases — the current segmentation is saved automatically as:
+
+```text
+{output}/{sub}/{ses}/anat/{sub}_{ses}_space-orig_dseg.nii.gz
+```
+
+## Semantic labels with nnInteractive (important)
+
+nnInteractive edits **one selected segment** at a time. In Slicer, several segments
+can share a single binary labelmap layer (one integer per voxel). If they share a
+layer, prompting a new ROI **overwrites** the other segment — this looks like
+nnInteractive “ate” your work. Your colleague is right: each ROI/class needs its
+**own labelmap layer** (not a separate NIfTI file on disk).
+
+This plugin creates `Segment_1` and `Segment_2` and **isolates layers automatically
+on case load**, and again whenever a segment is added (Add / Next segment). The
+**Isolate segment layers** button is only a manual fallback if something still
+looks shared.
+
+Suggested workflow (label 2 = enhancing, label 1 = non-enhancing):
+
+1. Select **`Segment_2`**, Initialize, prompt enhancing tumor (lasso/scribble).
+2. Select **`Segment_1`** (do not leave Segment_2 selected).
+3. Prompt non-enhancing components.
+4. If they overlap and you want NET to win: Logical operators → subtract
+   `Segment_1` from `Segment_2` (or the reverse, depending on priority).
+5. Save. Export writes integers from the `Segment_N` names.
+
+Never prompt while the wrong segment is selected. Prefer a temp instance segment
+only if needed, then OR it into `Segment_1` / `Segment_2`.
+
+## Supported image names
+
+Both short CTX-style and canonical BIDS suffixes are recognized:
+
+| Modality | Accepted suffixes |
+|----------|-------------------|
+| T1post   | `_T1post`, `_ce-gadolinium_T1w` |
+| T1pre    | `_T1pre`, `_T1w` (not contrast-enhanced) |
+| FLAIR    | `_FLAIR` |
+| T2       | `_T2`, `_T2w` |
 
 ## Reload during development
 
-To reload the scripted module without restarting Slicer:
-
-1. `Edit > Application Settings > Developer`, turn on **Developer mode**.
-2. Reopen **Segmentation Browser** and click the module's **Reload** button, or
-   run in the Python interactor:
+1. `Edit > Application Settings > Developer`, enable **Developer mode**.
+2. Reopen the module and click **Reload**, or in the Python interactor:
 
 ```python
-slicer.util.reloadScriptedModule("PediatricGliomaSegmentationBrowser")
+slicer.util.reloadScriptedModule("BidsSegmentationBrowser")
 ```
 
-Editing UI is established from the active config when the module loads. If you
-switch to a config with/without an `editing` block, reopen the module.
+## Tests
+
+Pure-Python discovery helpers (no Slicer required):
+
+```bash
+python -m unittest discover -s tests -v
+```
