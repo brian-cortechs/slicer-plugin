@@ -353,6 +353,10 @@ class BidsSegmentationBrowserWidget(ScriptedLoadableModuleWidget, VTKObservation
         self._borrowedNNInteractiveUI = None
         self._nnInteractiveModuleName = None
         self._updating_ui = False
+        self.undoShortcut = None
+        self.redoShortcut = None
+        self._undoShortcutObjectName = "BidsSegmentationBrowserUndoShortcut"
+        self._redoShortcutObjectName = "BidsSegmentationBrowserRedoShortcut"
 
     def setup(self):
         if not SLICER_AVAILABLE:
@@ -447,6 +451,7 @@ class BidsSegmentationBrowserWidget(ScriptedLoadableModuleWidget, VTKObservation
                 self.logic.saveCurrentSegmentation()
         except Exception:
             pass
+        self._remove_undo_redo_shortcuts()
         # Put nnInteractive's UI back before this module widget is destroyed;
         # otherwise a Reload deletes the borrowed controls permanently.
         self._restore_nninteractive_ui()
@@ -634,6 +639,11 @@ class BidsSegmentationBrowserWidget(ScriptedLoadableModuleWidget, VTKObservation
                 "nnInteractive controls are embedded below."
             )
             self.logic.setNNInteractiveWidget(nn_widget)
+            # nnInteractive registers an app-wide Ctrl+Z that only undoes its own
+            # prompts and blocks Segment Editor undo (paint, etc.). Replace it,
+            # and snapshot Segment Editor history before nnInteractive writes masks.
+            self._patch_nninteractive_to_save_editor_undo(nn_widget)
+            self._install_undo_redo_shortcuts(nn_widget)
             # Case load may have run before embed (deferred setup); re-bind now.
             if (
                 self.logic.currentSegmentationNode is not None
@@ -651,6 +661,198 @@ class BidsSegmentationBrowserWidget(ScriptedLoadableModuleWidget, VTKObservation
             self.nnInteractiveStatusLabel.text = (
                 f"Failed to embed nnInteractive: {exc}"
             )
+
+    def _segment_editor_widget(self):
+        nn_widget = self.logic.nnInteractiveWidget if self.logic else None
+        return getattr(getattr(nn_widget, "ui", None), "editor_widget", None)
+
+    def _remove_nninteractive_undo_shortcut(self, nn_widget):
+        """Drop nnInteractive's Ctrl+Z so it cannot swallow Segment Editor undo."""
+        if nn_widget is None:
+            return
+        shortcut_items = getattr(nn_widget, "shortcut_items", None)
+        if not isinstance(shortcut_items, dict):
+            return
+        for key in list(shortcut_items.keys()):
+            if str(key).lower().replace(" ", "") in ("ctrl+z", "meta+z", "cmd+z"):
+                shortcut = shortcut_items.pop(key, None)
+                if shortcut is None:
+                    continue
+                try:
+                    shortcut.setEnabled(False)
+                    shortcut.setParent(None)
+                    shortcut.deleteLater()
+                except Exception:
+                    pass
+
+    def _purge_competing_undo_shortcuts(self):
+        """Disable any other app-wide Undo/Redo shortcuts (nnInteractive's, etc.)."""
+        main_window = slicer.util.mainWindow()
+        if not main_window:
+            return
+        undo_key = qt.QKeySequence(qt.QKeySequence.Undo).toString()
+        redo_key = qt.QKeySequence(qt.QKeySequence.Redo).toString()
+        for shortcut in main_window.findChildren(qt.QShortcut):
+            if shortcut.objectName in (
+                self._undoShortcutObjectName,
+                self._redoShortcutObjectName,
+            ):
+                continue
+            try:
+                key = shortcut.key().toString()
+            except Exception:
+                continue
+            if key in (undo_key, redo_key, "Ctrl+Z", "Meta+Z", "Ctrl+Shift+Z", "Ctrl+Y"):
+                try:
+                    shortcut.setEnabled(False)
+                except Exception:
+                    pass
+
+    def _remove_undo_redo_shortcuts(self):
+        for attr in ("undoShortcut", "redoShortcut"):
+            shortcut = getattr(self, attr, None)
+            if shortcut is not None:
+                try:
+                    shortcut.setParent(None)
+                    shortcut.deleteLater()
+                except Exception:
+                    pass
+                setattr(self, attr, None)
+        main_window = slicer.util.mainWindow()
+        if not main_window:
+            return
+        for shortcut in main_window.findChildren(qt.QShortcut):
+            if shortcut.objectName in (
+                self._undoShortcutObjectName,
+                self._redoShortcutObjectName,
+            ):
+                shortcut.setParent(None)
+                shortcut.deleteLater()
+
+    def _patch_nninteractive_to_save_editor_undo(self, nn_widget):
+        """Snapshot Segment Editor history before nnInteractive overwrites a mask.
+
+        nnInteractive intentionally skips saveStateForUndo on apply_result, so its
+        writes were invisible to Segment Editor Ctrl+Z. Wrap apply_result once.
+        """
+        if nn_widget is None or getattr(nn_widget, "_bidsBrowserUndoPatched", False):
+            return
+        editor = getattr(getattr(nn_widget, "ui", None), "editor_widget", None)
+        if editor is None or not hasattr(editor, "saveStateForUndo"):
+            print(
+                "[BidsSegmentationBrowser] Segment Editor has no saveStateForUndo; "
+                "nnInteractive undos may still be limited to the remote session."
+            )
+            return
+        if not hasattr(nn_widget, "apply_result"):
+            return
+        original_apply_result = nn_widget.apply_result
+
+        def apply_result_with_editor_undo(changed_bbox=None):
+            try:
+                editor.saveStateForUndo()
+            except Exception as exc:
+                print(
+                    f"[BidsSegmentationBrowser] saveStateForUndo before "
+                    f"nnInteractive apply failed: {exc}"
+                )
+            return original_apply_result(changed_bbox)
+
+        nn_widget.apply_result = apply_result_with_editor_undo
+        nn_widget._bidsBrowserUndoPatched = True
+        if hasattr(editor, "setMaximumNumberOfUndoStates"):
+            editor.setMaximumNumberOfUndoStates(100)
+
+    def _install_undo_redo_shortcuts(self, nn_widget):
+        self._remove_nninteractive_undo_shortcut(nn_widget)
+        self._remove_undo_redo_shortcuts()
+        self._purge_competing_undo_shortcuts()
+        main_window = slicer.util.mainWindow()
+        if not main_window:
+            return
+
+        editor = self._segment_editor_widget()
+        if editor is not None and hasattr(editor, "setMaximumNumberOfUndoStates"):
+            editor.setMaximumNumberOfUndoStates(100)
+
+        self.undoShortcut = qt.QShortcut(main_window)
+        self.undoShortcut.objectName = self._undoShortcutObjectName
+        self.undoShortcut.setKey(qt.QKeySequence(qt.QKeySequence.Undo))
+        self.undoShortcut.setContext(qt.Qt.ApplicationShortcut)
+        self.undoShortcut.connect("activated()", self.onUndo)
+
+        self.redoShortcut = qt.QShortcut(main_window)
+        self.redoShortcut.objectName = self._redoShortcutObjectName
+        self.redoShortcut.setKey(qt.QKeySequence(qt.QKeySequence.Redo))
+        self.redoShortcut.setContext(qt.Qt.ApplicationShortcut)
+        self.redoShortcut.connect("activated()", self.onRedo)
+
+    def _segmentation_undo_fingerprint(self):
+        """Cheap fingerprint to detect whether Segment Editor undo changed anything."""
+        node = self.logic.currentSegmentationNode if self.logic else None
+        if node is None:
+            return None
+        try:
+            segmentation = node.GetSegmentation()
+            parts = [str(segmentation.GetNumberOfSegments())]
+            for index in range(segmentation.GetNumberOfSegments()):
+                segment_id = segmentation.GetNthSegmentID(index)
+                segment = segmentation.GetSegment(segment_id)
+                name = segment.GetName() if segment else ""
+                try:
+                    array = slicer.util.arrayFromSegmentBinaryLabelmap(node, segment_id)
+                    voxel_count = int(array.sum()) if array is not None else -1
+                except Exception:
+                    voxel_count = -1
+                parts.append(f"{segment_id}:{name}:{voxel_count}")
+            return "|".join(parts)
+        except Exception:
+            return None
+
+    def onUndo(self):
+        """Undo paint/nnInteractive mask edits via Segment Editor history.
+
+        Falls back to nnInteractive's session undo if the editor history did not
+        change (e.g. older Slicer without saveStateForUndo).
+        """
+        editor = self._segment_editor_widget()
+        nn_widget = self.logic.nnInteractiveWidget if self.logic else None
+
+        if editor is not None and hasattr(editor, "undo"):
+            before = self._segmentation_undo_fingerprint()
+            try:
+                editor.undo()
+            except Exception as exc:
+                print(f"[BidsSegmentationBrowser] Segment Editor undo failed: {exc}")
+            else:
+                after = self._segmentation_undo_fingerprint()
+                if (
+                    before is not None
+                    and after is not None
+                    and before != after
+                ):
+                    slicer.util.showStatusMessage("Undo (Segment Editor)", 2000)
+                    return
+
+        if nn_widget is not None and hasattr(nn_widget, "on_undo"):
+            try:
+                nn_widget.on_undo()
+                return
+            except Exception as exc:
+                print(f"[BidsSegmentationBrowser] nnInteractive undo failed: {exc}")
+
+        slicer.util.showStatusMessage("Nothing to undo", 2000)
+
+    def onRedo(self):
+        editor = self._segment_editor_widget()
+        if editor is not None and hasattr(editor, "redo"):
+            before = self._segmentation_undo_fingerprint()
+            editor.redo()
+            after = self._segmentation_undo_fingerprint()
+            if before != after:
+                slicer.util.showStatusMessage("Redo (Segment Editor)", 2000)
+                return
+        slicer.util.showStatusMessage("Nothing to redo", 2000)
 
     def _folders_ready(self) -> bool:
         input_folder = (self.inputFolderEdit.text or "").strip()
@@ -1198,6 +1400,8 @@ class BidsSegmentationBrowserLogic(ScriptedLoadableModuleLogic):
                 editor.setMRMLSegmentEditorNode(segment_editor_node)
             editor.setSegmentationNode(segmentation_node)
             editor.setSourceVolumeNode(source_volume_node)
+            if hasattr(editor, "setMaximumNumberOfUndoStates"):
+                editor.setMaximumNumberOfUndoStates(100)
             # Mark image data stale so Initialize / next prompt re-uploads.
             if hasattr(nn_widget, "previous_states"):
                 nn_widget.previous_states.pop("image_data", None)
