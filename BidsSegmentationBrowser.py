@@ -1012,6 +1012,7 @@ class BidsSegmentationBrowserLogic(ScriptedLoadableModuleLogic):
         self.currentCase: Optional[CaseRecord] = None
         self.currentDisplayModality: Optional[str] = None
         self.currentVolumeNodesByName: Dict[str, object] = {}
+        self.currentEditVolumeNode = None
         self.currentSegmentationNode = None
         self.currentSegmentationSourcePath: Optional[str] = None
         self.loadedNodeIDs: List[str] = []
@@ -1039,6 +1040,7 @@ class BidsSegmentationBrowserLogic(ScriptedLoadableModuleLogic):
                 print(f"[BidsSegmentationBrowser] Auto-save failed: {exc}")
         self._unbind_editors()
         self._remove_previously_loaded_nodes()
+        self.currentEditVolumeNode = None
 
     def loadCase(self, case: CaseRecord) -> List[str]:
         if not SLICER_AVAILABLE:
@@ -1067,8 +1069,22 @@ class BidsSegmentationBrowserLogic(ScriptedLoadableModuleLogic):
         display_volume = self.currentVolumeNodesByName[display_modality]
 
         self.currentSegmentationNode = self._load_or_create_segmentation(case)
+        # Display can stay on T1post, but paint/erase/export must use a volume whose
+        # geometry matches the labelmap. Many dsegs are in T1pre grid while the
+        # viewer prefers T1post — binding the editor to T1post made Eraser a no-op
+        # and could auto-save empty masks.
+        edit_volume = (
+            self._best_edit_volume(self.currentSegmentationNode) or display_volume
+        )
+        self.currentEditVolumeNode = edit_volume
+        if edit_volume != display_volume:
+            edit_name = edit_volume.GetName() if edit_volume is not None else "?"
+            warnings.append(
+                f"Editing against {edit_name} (matches segmentation geometry); "
+                f"displaying {display_modality}."
+            )
         self._show_single_axial_volume(display_volume)
-        self._bind_editors(self.currentSegmentationNode, display_volume)
+        self._bind_editors(self.currentSegmentationNode, edit_volume)
         return warnings
 
     def saveCurrentSegmentation(self) -> str:
@@ -1084,7 +1100,13 @@ class BidsSegmentationBrowserLogic(ScriptedLoadableModuleLogic):
         )
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
-        reference_volume = self.currentVolumeNodesByName.get(self.currentDisplayModality)
+        reference_volume = self.currentEditVolumeNode
+        if reference_volume is None:
+            reference_volume = self._best_edit_volume(self.currentSegmentationNode)
+        if reference_volume is None:
+            reference_volume = self.currentVolumeNodesByName.get(
+                self.currentDisplayModality
+            )
         if reference_volume is None and self.currentVolumeNodesByName:
             reference_volume = next(iter(self.currentVolumeNodesByName.values()))
         if reference_volume is None:
@@ -1128,13 +1150,22 @@ class BidsSegmentationBrowserLogic(ScriptedLoadableModuleLogic):
                 )
             output_array[mask > 0] = label_value
 
+        labeled_voxels = int((output_array > 0).sum())
         print(
             "[BidsSegmentationBrowser] Export label mapping for "
-            f"{self.currentCase.display_name}:\n" + "\n".join(diagnostics)
+            f"{self.currentCase.display_name} (labeled_voxels={labeled_voxels}):\n"
+            + ("\n".join(diagnostics) if diagnostics else "  (no segments)")
         )
 
-        # Don't create empty placeholder files just from browsing an unedited case.
-        if not output_array.any() and not os.path.isfile(output_path):
+        # Never write an empty labelmap over an existing file — that was wiping
+        # real work when auto-save ran on case switch with a failed/empty export.
+        if labeled_voxels == 0:
+            if os.path.isfile(output_path):
+                raise RuntimeError(
+                    "Refusing to overwrite existing segmentation with an empty "
+                    f"export: {output_path}"
+                )
+            # Don't create empty placeholder files just from browsing.
             return output_path
 
         labelmap_node = slicer.modules.volumes.logic().CloneVolume(
@@ -1378,11 +1409,52 @@ class BidsSegmentationBrowserLogic(ScriptedLoadableModuleLogic):
         display_node = volume_node.GetDisplayNode()
         if display_node:
             display_node.SetInterpolate(False)
+        # Do not force AdjustWindowLevel here — that steals click-drag from
+        # Segment Editor paint/erase until the effect reclaims the mouse.
 
-        interaction_node = slicer.app.applicationLogic().GetInteractionNode()
-        interaction_node.SetCurrentInteractionMode(
-            slicer.vtkMRMLInteractionNode.AdjustWindowLevel
-        )
+    def _best_edit_volume(self, segmentation_node):
+        """Return the loaded volume where this segmentation's voxels are readable.
+
+        Existing dsegs are often stored in T1pre geometry while the browser
+        displays T1post. Exporting/editing against the wrong volume yields empty
+        masks (silent data loss) and paint/erase that appear to do nothing.
+        """
+        if segmentation_node is None or not self.currentVolumeNodesByName:
+            return None
+        segmentation = segmentation_node.GetSegmentation()
+        if segmentation is None or segmentation.GetNumberOfSegments() == 0:
+            return None
+
+        best_volume = None
+        best_voxels = -1
+        segment_ids = [
+            segmentation.GetNthSegmentID(index)
+            for index in range(segmentation.GetNumberOfSegments())
+        ]
+        for volume_node in self.currentVolumeNodesByName.values():
+            total = 0
+            for segment_id in segment_ids:
+                try:
+                    mask = slicer.util.arrayFromSegmentBinaryLabelmap(
+                        segmentation_node, segment_id, volume_node
+                    )
+                except TypeError:
+                    try:
+                        mask = slicer.util.arrayFromSegmentBinaryLabelmap(
+                            segmentation_node, segment_id
+                        )
+                    except Exception:
+                        mask = None
+                except Exception:
+                    mask = None
+                if mask is not None:
+                    total += int((mask > 0).sum())
+            if total > best_voxels:
+                best_voxels = total
+                best_volume = volume_node
+        if best_voxels > 0:
+            return best_volume
+        return None
 
     def _bind_editors(self, segmentation_node, source_volume_node):
         segmentation_node.SetReferenceImageGeometryParameterFromVolumeNode(
