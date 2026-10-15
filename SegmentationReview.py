@@ -16,7 +16,7 @@ from typing import Dict, List, Optional, Sequence, Tuple
 logger = logging.getLogger(__name__)
 
 DEFAULT_SPREADSHEET = (
-    "/Users/brian/repos/glioma-segmentation/glioma-heldout-set/heldout_studies.csv"
+    "/Users/brian/repos/glioma-segmentation/data/datasets/sourcedata/performance-set/heldout_studies.csv"
 )
 SETTINGS_SPREADSHEET_KEY = "SegmentationReview/spreadsheet"
 SETTINGS_DATASET_ROOT_KEY = "SegmentationReview/datasetRoot"
@@ -156,9 +156,15 @@ def read_cases(spreadsheet_path: str) -> List[CaseRecord]:
         raise CaseLoadError(f"Spreadsheet not found: {spreadsheet_path}")
 
     try:
-        with open(spreadsheet_path, newline="", encoding="utf-8") as handle:
+        with open(spreadsheet_path, newline="", encoding="utf-8-sig") as handle:
             reader = csv.DictReader(handle)
-            fieldnames = reader.fieldnames or []
+            # Excel's CSV export prefixes the first header with a BOM, so
+            # patient_id would not match and the case list would omit it.
+            reader.fieldnames = [
+                (name or "").replace("\ufeff", "").strip()
+                for name in (reader.fieldnames or [])
+            ]
+            fieldnames = reader.fieldnames
             missing = [column for column in REQUIRED_COLUMNS if column not in fieldnames]
             if missing:
                 raise CaseLoadError(

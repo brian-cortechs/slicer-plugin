@@ -69,6 +69,16 @@ class SpreadsheetAndFilesTest(unittest.TestCase):
             "BraTS-GLI-00001-000 | pre | HGG | sub-00001/ses-000",
         )
 
+    def test_reads_patient_id_when_excel_prefixes_a_bom(self):
+        bids, segs = self._case_dirs()
+        path = self._write_csv(
+            [f"sub-00078,BraTS-GLI-00101-000,ses-000,pre,HGG,,{bids},{segs}"]
+        )
+        path.write_bytes(b"\xef\xbb\xbf" + path.read_bytes())
+        cases = self.module.read_cases(str(path))
+        self.assertEqual(cases[0].patient_id, "sub-00078")
+        self.assertIn("sub-00078/ses-000", self.module.case_label(cases[0]))
+
     def test_missing_column_is_an_error(self):
         path = self.root / "bad.csv"
         path.write_text("patient_id\nsub-1\n", encoding="utf-8")
